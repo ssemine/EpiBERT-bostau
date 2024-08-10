@@ -28,9 +28,9 @@ class epibert(tf.keras.Model):
                  filter_list_seq: list = [512, 640, 768, 896, 1024, 1152],
                  filter_list_atac: list = [32, 64],
                  final_point_scale: int = 6,
-                 num_motifs: int = 693,
-                 motif_dropout_rate: float = 0.25,
-                 motif_units_fc: int = 32,
+                 #num_motifs: int = 693,
+                 #motif_dropout_rate: float = 0.25,
+                 #motif_units_fc: int = 32,
                  name: str = 'epibert',
                  **kwargs):
         """
@@ -87,9 +87,9 @@ class epibert(tf.keras.Model):
         self.filter_list_atac=filter_list_atac
         self.BN_momentum = BN_momentum
         self.final_point_scale = final_point_scale
-        self.num_motifs = num_motifs
-        self.motif_units_fc = motif_units_fc
-        self.motif_dropout_rate= motif_dropout_rate
+        #self.num_motifs = num_motifs
+        #self.motif_units_fc = motif_units_fc
+        #self.motif_dropout_rate= motif_dropout_rate
 
         self.hidden_size=self.filter_list_seq[-1]
         self.d_model = self.filter_list_seq[-1]
@@ -150,22 +150,22 @@ class epibert(tf.keras.Model):
             for i, num_filters in enumerate(self.filter_list_atac)], name='conv_tower_atac')
 
         # dropout for TF activity
-        self.motif_dropout1=kl.Dropout(rate=self.motif_dropout_rate, **kwargs)
-        self.motif_dropout2=kl.Dropout(rate=self.motif_dropout_rate/4, **kwargs)
+        #self.motif_dropout1=kl.Dropout(rate=self.motif_dropout_rate, **kwargs)
+        #self.motif_dropout2=kl.Dropout(rate=self.motif_dropout_rate/4, **kwargs)
         # dense layer for motif activity
-        self.motif_activity_fc1 = kl.Dense(
-            self.motif_units_fc,
-            activation='gelu',
-            kernel_initializer='lecun_normal',
-            bias_initializer='zeros',
-            use_bias=True)
+        #self.motif_activity_fc1 = kl.Dense(
+        #    self.motif_units_fc,
+        #    activation='gelu',
+        #    kernel_initializer='lecun_normal',
+        #    bias_initializer='zeros',
+        #    use_bias=True)
 
-        self.motif_activity_fc2 = kl.Dense(
-            self.motif_units_fc//4,
-            activation=None,
-            kernel_initializer='lecun_normal',
-            bias_initializer='zeros',
-            use_bias=True)
+        #self.motif_activity_fc2 = kl.Dense(
+        #    self.motif_units_fc//4,
+        #    activation=None,
+        #    kernel_initializer='lecun_normal',
+        #    bias_initializer='zeros',
+        #    use_bias=True)
         
         self.pre_transformer_projection = kl.Dense(self.hidden_size,
                                                    activation=None,
@@ -230,13 +230,13 @@ class epibert(tf.keras.Model):
         atac_x = self.conv_tower_atac(atac_x,training=training)
 
         ### motif activity processing w/ MLP
-        motif_activity = self.motif_activity_fc1(motif_activity)
-        motif_activity = self.motif_dropout1(motif_activity,training=training)
-        motif_activity = self.motif_activity_fc2(motif_activity)
-        motif_activity = self.motif_dropout2(motif_activity,training=training)
-        motif_activity = tf.tile(motif_activity, [1, self.output_length, 1])
+        #motif_activity = self.motif_activity_fc1(motif_activity)
+        #motif_activity = self.motif_dropout1(motif_activity,training=training)
+        #motif_activity = self.motif_activity_fc2(motif_activity)
+        #motif_activity = self.motif_dropout2(motif_activity,training=training)
+        #motif_activity = tf.tile(motif_activity, [1, self.output_length, 1])
 
-        transformer_input = tf.concat([sequence,atac_x, motif_activity],
+        transformer_input = tf.concat([sequence,atac_x],
                                       axis=2) # append processed seq,atac,motif inputs in channel dim.
         transformer_input = self.pre_transformer_projection(transformer_input)
         out_performer,att_matrices = self.performer(transformer_input, training=training)
