@@ -10,7 +10,7 @@ from tensorflow.keras import mixed_precision
 os.environ['TF_ENABLE_EAGER_CLIENT_STREAMING_ENQUEUE']='False'
 
 ## custom modules
-import models.epibert_rampage_finetune as epibert # can toggle which model you want here
+import src.models.epibert_rampage_finetune as epibert # can toggle which model you want here
 import src.optimizers as optimizers
 import training_utils_rampage_finetune as training_utils
 import src.schedulers as schedulers
