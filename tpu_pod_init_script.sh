@@ -6,7 +6,7 @@ sudo pip3 install einops==0.4.0
 sudo pip3 install scipy
 sudo pip3 install wandb==0.13.1
 sudo pip3 install scikit-learn
-sudo pip3 install numpy --upgrade
+sudo pip3 install numpy==1.26.4
 sudo pip3 install pandas
 wandb login
 
