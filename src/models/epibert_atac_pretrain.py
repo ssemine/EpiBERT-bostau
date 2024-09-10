@@ -28,9 +28,9 @@ class epibert(tf.keras.Model):
                  filter_list_seq: list = [512, 640, 768, 896, 1024, 1152],
                  filter_list_atac: list = [32, 64],
                  final_point_scale: int = 6,
-                 #num_motifs: int = 693,
-                 #motif_dropout_rate: float = 0.25,
-                 #motif_units_fc: int = 32,
+                 num_motifs: int = 693,
+                 motif_dropout_rate: float = 0.25,
+                 motif_units_fc: int = 32,
                  name: str = 'epibert',
                  **kwargs):
         """
@@ -87,9 +87,9 @@ class epibert(tf.keras.Model):
         self.filter_list_atac=filter_list_atac
         self.BN_momentum = BN_momentum
         self.final_point_scale = final_point_scale
-        #self.num_motifs = num_motifs
-        #self.motif_units_fc = motif_units_fc
-        #self.motif_dropout_rate= motif_dropout_rate
+        self.num_motifs = num_motifs
+        self.motif_units_fc = motif_units_fc
+        self.motif_dropout_rate= motif_dropout_rate
 
         self.hidden_size=self.filter_list_seq[-1]
         self.d_model = self.filter_list_seq[-1]
