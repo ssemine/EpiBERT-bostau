@@ -230,13 +230,13 @@ class epibert(tf.keras.Model):
         atac_x = self.conv_tower_atac(atac_x,training=training)
 
         ### motif activity processing w/ MLP
-        #motif_activity = self.motif_activity_fc1(motif_activity)
-        #motif_activity = self.motif_dropout1(motif_activity,training=training)
-        #motif_activity = self.motif_activity_fc2(motif_activity)
-        #motif_activity = self.motif_dropout2(motif_activity,training=training)
-        #motif_activity = tf.tile(motif_activity, [1, self.output_length, 1])
+        motif_activity = self.motif_activity_fc1(motif_activity)
+        motif_activity = self.motif_dropout1(motif_activity,training=training)
+        motif_activity = self.motif_activity_fc2(motif_activity)
+        motif_activity = self.motif_dropout2(motif_activity,training=training)
+        motif_activity = tf.tile(motif_activity, [1, self.output_length, 1])
 
-        transformer_input = tf.concat([sequence,atac_x],
+        transformer_input = tf.concat([sequence,atac_x,motif_activity],
                                       axis=2) # append processed seq,atac,motif inputs in channel dim.
         transformer_input = self.pre_transformer_projection(transformer_input)
         out_performer,att_matrices = self.performer(transformer_input, training=training)
