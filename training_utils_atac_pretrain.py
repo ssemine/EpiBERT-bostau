@@ -197,11 +197,9 @@ def deserialize_tr(serialized_example, g, use_motif_activity,
     motif_activity = tf.ensure_shape(tf.io.parse_tensor(data['motif_activity'], out_type=tf.float16), [693])
     motif_activity = tf.cast(motif_activity,dtype=tf.float32)
     motif_activity = tf.expand_dims(motif_activity,axis=0)
-    min_val = tf.reduce_min(motif_activity)
-    max_val = tf.reduce_max(motif_activity)
-    motif_activity = (motif_activity - min_val) / (max_val - min_val)
+    motif_activity = (motif_activity - motif_means) / motif_std
     motif_activity = motif_activity + \
-        tf.math.abs(g.normal(motif_activity.shape,mean=0.0,stddev=0.0001,dtype=tf.float32))
+        g.normal(motif_activity.shape,mean=0.0,stddev=0.001,dtype=tf.float32)
     
     if not use_motif_activity: # if running ablation, just set TF activity to 0
         print('not using tf activity')
@@ -355,11 +353,9 @@ def deserialize_val(serialized_example, g_val, use_motif_activity,
     motif_activity = tf.ensure_shape(tf.io.parse_tensor(data['motif_activity'], out_type=tf.float16), [693])
     motif_activity = tf.cast(motif_activity,dtype=tf.float32)
     motif_activity = tf.expand_dims(motif_activity,axis=0)
-    min_val = tf.reduce_min(motif_activity)
-    max_val = tf.reduce_max(motif_activity)
-    motif_activity = (motif_activity - min_val) / (max_val - min_val)
+    motif_activity = (motif_activity - motif_means) / motif_std
     motif_activity = motif_activity + \
-        tf.math.abs(g_val.normal(motif_activity.shape,mean=0.0,stddev=0.0001,dtype=tf.float32))
+        g.normal(motif_activity.shape,mean=0.0,stddev=0.001,dtype=tf.float32)
     
     if not use_motif_activity: # if running ablation, just set TF activity to 0
         print('not using tf activity')
@@ -846,3 +842,13 @@ def mask_ATAC_profile(output_length_ATAC, output_length, crop_size, mask_size,ou
     return full_comb_mask, full_comb_mask_store, full_comb_unmask_store
 
 
+
+with open('src/motif_means_norm.tsv', 'r') as file:
+    lines = file.readlines()
+data = [list(map(float, line.strip().split(','))) for line in lines]
+motif_means = tf.cast(np.array(data),dtype=tf.float32)
+
+with open('src/motif_std_norm.tsv', 'r') as file:
+    lines = file.readlines()
+data = [list(map(float, line.strip().split(','))) for line in lines]
+motif_std = tf.cast(np.array(data),dtype=tf.float32)
