@@ -150,22 +150,22 @@ class epibert(tf.keras.Model):
             for i, num_filters in enumerate(self.filter_list_atac)], name='conv_tower_atac')
 
         # dropout for TF activity
-        #self.motif_dropout1=kl.Dropout(rate=self.motif_dropout_rate, **kwargs)
-        #self.motif_dropout2=kl.Dropout(rate=self.motif_dropout_rate/4, **kwargs)
+        self.motif_dropout1=kl.Dropout(rate=self.motif_dropout_rate, **kwargs)
+        self.motif_dropout2=kl.Dropout(rate=self.motif_dropout_rate/4, **kwargs)
         # dense layer for motif activity
-        #self.motif_activity_fc1 = kl.Dense(
-        #    self.motif_units_fc,
-        #    activation='gelu',
-        #    kernel_initializer='lecun_normal',
-        #    bias_initializer='zeros',
-        #    use_bias=True)
+        self.motif_activity_fc1 = kl.Dense(
+            self.motif_units_fc,
+            activation='gelu',
+            kernel_initializer='lecun_normal',
+            bias_initializer='zeros',
+            use_bias=True)
 
-        #self.motif_activity_fc2 = kl.Dense(
-        #    self.motif_units_fc//4,
-        #    activation=None,
-        #    kernel_initializer='lecun_normal',
-        #    bias_initializer='zeros',
-        #    use_bias=True)
+        self.motif_activity_fc2 = kl.Dense(
+            self.motif_units_fc//4,
+            activation=None,
+            kernel_initializer='lecun_normal',
+            bias_initializer='zeros',
+            use_bias=True)
         
         self.pre_transformer_projection = kl.Dense(self.hidden_size,
                                                    activation=None,

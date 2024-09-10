@@ -197,7 +197,7 @@ def deserialize_tr(serialized_example, g, use_motif_activity,
     motif_activity = tf.ensure_shape(tf.io.parse_tensor(data['motif_activity'], out_type=tf.float16), [693])
     motif_activity = tf.cast(motif_activity,dtype=tf.float32)
     motif_activity = tf.expand_dims(motif_activity,axis=0)
-    motif_activity = (motif_activity - motif_means) / motif_std
+    motif_activity = (motif_activity - motif_means) / (motif_std + 1.0e-06)
     motif_activity = motif_activity + \
         g.normal(motif_activity.shape,mean=0.0,stddev=0.001,dtype=tf.float32)
     
@@ -353,7 +353,7 @@ def deserialize_val(serialized_example, g_val, use_motif_activity,
     motif_activity = tf.ensure_shape(tf.io.parse_tensor(data['motif_activity'], out_type=tf.float16), [693])
     motif_activity = tf.cast(motif_activity,dtype=tf.float32)
     motif_activity = tf.expand_dims(motif_activity,axis=0)
-    motif_activity = (motif_activity - motif_means) / motif_std
+    motif_activity = (motif_activity - motif_means) / (motif_std + 1.0e-06)
     motif_activity = motif_activity + \
         g_val.normal(motif_activity.shape,mean=0.0,stddev=0.001,dtype=tf.float32)
     
