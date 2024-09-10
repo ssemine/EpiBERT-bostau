@@ -355,7 +355,7 @@ def deserialize_val(serialized_example, g_val, use_motif_activity,
     motif_activity = tf.expand_dims(motif_activity,axis=0)
     motif_activity = (motif_activity - motif_means) / motif_std
     motif_activity = motif_activity + \
-        g.normal(motif_activity.shape,mean=0.0,stddev=0.001,dtype=tf.float32)
+        g_val.normal(motif_activity.shape,mean=0.0,stddev=0.001,dtype=tf.float32)
     
     if not use_motif_activity: # if running ablation, just set TF activity to 0
         print('not using tf activity')
