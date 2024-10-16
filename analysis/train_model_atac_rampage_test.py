@@ -19,8 +19,6 @@ import src.optimizers as optimizers
 import analysis.training_utils_atac_rampage_test as training_utils
 import src.schedulers as schedulers
 
-import src.load_weights_atac_rna as load_weights_atac_rna
-
 # Function to parse boolean string values
 def parse_bool_str(input_str):
     if input_str in ['False', 'false', 'FALSE', 'F']:

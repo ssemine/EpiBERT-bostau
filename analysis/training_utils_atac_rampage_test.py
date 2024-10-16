@@ -298,10 +298,6 @@ def deserialize_tr(serialized_example, g, use_motif_activity,
         random_one_hot = tf.one_hot(random_sequence, depth=4)
         sequence = random_one_hot
 
-
-    cell_type = tf.io.parse_tensor(data['cell_encoding'],
-                                  out_type=tf.int32)
-
     return tf.cast(tf.ensure_shape(sequence, 
                                    [input_length,4]),dtype=tf.bfloat16), \
                 tf.cast(masked_atac,dtype=tf.bfloat16), \
@@ -889,12 +885,12 @@ def mask_ATAC_profile(output_length_ATAC, output_length, crop_size, mask_size,ou
     return full_comb_mask, full_comb_mask_store, full_comb_unmask_store
 
 
-with open('src/motif_means_norm.tsv', 'r') as file:
+with open('/home/javed/EpiBERT/src/motif_means_norm.tsv', 'r') as file:
     lines = file.readlines()
 data = [list(map(float, line.strip().split(','))) for line in lines]
 motif_means = tf.cast(np.array(data),dtype=tf.float32)
 
-with open('src/motif_std_norm.tsv', 'r') as file:
+with open('/home/javed/EpiBERT/src/motif_std_norm.tsv', 'r') as file:
     lines = file.readlines()
 data = [list(map(float, line.strip().split(','))) for line in lines]
 motif_std = tf.cast(np.array(data),dtype=tf.float32)
