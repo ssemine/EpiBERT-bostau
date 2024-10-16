@@ -12,7 +12,7 @@ import sys
 os.environ['TF_ENABLE_EAGER_CLIENT_STREAMING_ENQUEUE']='False'
 
 
-sys.path.insert(0, os.path.expanduser("~") + '/genformer')
+sys.path.insert(0, os.path.expanduser("~") + '/EpiBERT')
 ## custom modules
 import src.models.epibert_rampage_finetune as epibert # can toggle which model you want here
 import src.optimizers as optimizers
