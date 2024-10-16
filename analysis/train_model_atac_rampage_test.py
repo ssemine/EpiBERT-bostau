@@ -189,7 +189,7 @@ def main():
         
         print('created dataset iterators')
         # initialize model
-        model = epibert.genfepibertormer(kernel_transformation=wandb.config.kernel_transformation,
+        model = epibert.epibert(kernel_transformation=wandb.config.kernel_transformation,
                                 dropout_rate=wandb.config.dropout_rate,
                                 pointwise_dropout_rate=wandb.config.pointwise_dropout_rate,
                                 input_length=wandb.config.input_length,
