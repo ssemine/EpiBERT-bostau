@@ -205,11 +205,14 @@ def deserialize_tr(serialized_example, g, use_motif_activity,
 
     ## parse out feature map
     feature_map = {
-        'sequence': tf.io.FixedLenFeature([], tf.string), # sequence string
-        'atac': tf.io.FixedLenFeature([], tf.string), # atac profile, input
-        'peaks_center': tf.io.FixedLenFeature([], tf.string), # int 1D tensor showing peak center locations
-        'motif_activity': tf.io.FixedLenFeature([], tf.string), #motif activity tensor, 693 x 1 
-        'rna': tf.io.FixedLenFeature([], tf.string) # rampage profile, input
+        'sequence': tf.io.FixedLenFeature([], tf.string),
+        'atac': tf.io.FixedLenFeature([], tf.string),
+        'peaks_center': tf.io.FixedLenFeature([], tf.string),
+        'motif_activity': tf.io.FixedLenFeature([], tf.string),
+        'rna': tf.io.FixedLenFeature([], tf.string), # rampage profile
+        'tss_tokens': tf.io.FixedLenFeature([], tf.string),
+        'processed_gene_token': tf.io.FixedLenFeature([], tf.string),
+        'cell_encoding': tf.io.FixedLenFeature([], tf.string)
     }
 
     ## here we need to set up some random numbers to achieve data augmentation
@@ -298,6 +301,10 @@ def deserialize_tr(serialized_example, g, use_motif_activity,
         random_one_hot = tf.one_hot(random_sequence, depth=4)
         sequence = random_one_hot
 
+
+    cell_type = tf.io.parse_tensor(data['cell_encoding'],
+                                  out_type=tf.int32)
+
     return tf.cast(tf.ensure_shape(sequence, 
                                    [input_length,4]),dtype=tf.bfloat16), \
                 tf.cast(masked_atac,dtype=tf.bfloat16), \
@@ -352,7 +359,6 @@ def deserialize_val(serialized_example, g_val, use_motif_activity,
         'atac': tf.io.FixedLenFeature([], tf.string),
         'peaks_center': tf.io.FixedLenFeature([], tf.string),
         'motif_activity': tf.io.FixedLenFeature([], tf.string),
-        'sequence': tf.io.FixedLenFeature([], tf.string),
         'rna': tf.io.FixedLenFeature([], tf.string), # rampage profile, input
         'tss_tokens': tf.io.FixedLenFeature([], tf.string),
         'processed_gene_token': tf.io.FixedLenFeature([], tf.string),
