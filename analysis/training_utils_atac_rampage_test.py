@@ -253,8 +253,6 @@ def deserialize_tr(serialized_example, g, use_motif_activity,
     min_val = tf.reduce_min(motif_activity)
     max_val = tf.reduce_max(motif_activity)
     motif_activity = (motif_activity - min_val) / (max_val - min_val)
-    motif_activity = motif_activity + \
-        tf.math.abs(g.normal(motif_activity.shape,mean=0.0,stddev=0.0001,dtype=tf.float32))
 
     if not use_motif_activity: # if running ablation, just set TF activity to 0
         print('not using tf activity')
@@ -422,8 +420,6 @@ def deserialize_val(serialized_example, g_val, use_motif_activity,
     min_val = tf.reduce_min(motif_activity)
     max_val = tf.reduce_max(motif_activity)
     motif_activity = (motif_activity - min_val) / (max_val - min_val)
-    motif_activity = motif_activity + \
-        tf.math.abs(g.normal(motif_activity.shape,mean=0.0,stddev=0.0001,dtype=tf.float32))
 
     if not use_motif_activity: # if running ablation, just set TF activity to 0
         print('not using tf activity')
