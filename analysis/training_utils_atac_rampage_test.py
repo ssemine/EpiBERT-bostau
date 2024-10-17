@@ -211,7 +211,6 @@ def deserialize_tr(serialized_example, g, use_motif_activity,
         'motif_activity': tf.io.FixedLenFeature([], tf.string),
         'rna': tf.io.FixedLenFeature([], tf.string), # rampage profile
         'tss_tokens': tf.io.FixedLenFeature([], tf.string),
-        'processed_gene_token': tf.io.FixedLenFeature([], tf.string),
         'cell_encoding': tf.io.FixedLenFeature([], tf.string)
     }
 
@@ -229,7 +228,6 @@ def deserialize_tr(serialized_example, g, use_motif_activity,
     # atac input, cast to float32 
     atac = tf.ensure_shape(tf.io.parse_tensor(data['atac'], out_type=tf.float32), 
                                    [output_length_ATAC,1])
-    atac = atac 
     atac_target = atac ## store the target ATAC, as we will subsequently directly manipulate atac for masking
 
     # rna output, cast to float32 
@@ -252,7 +250,11 @@ def deserialize_tr(serialized_example, g, use_motif_activity,
     motif_activity = tf.ensure_shape(tf.io.parse_tensor(data['motif_activity'], out_type=tf.float32), [693])
     motif_activity = tf.cast(motif_activity,dtype=tf.float32)
     motif_activity = tf.expand_dims(motif_activity,axis=0)
-    motif_activity = (motif_activity - motif_means) / (motif_std + 1.0e-06)
+    min_val = tf.reduce_min(motif_activity)
+    max_val = tf.reduce_max(motif_activity)
+    motif_activity = (motif_activity - min_val) / (max_val - min_val)
+    motif_activity = motif_activity + \
+        tf.math.abs(g.normal(motif_activity.shape,mean=0.0,stddev=0.0001,dtype=tf.float32))
 
     if not use_motif_activity: # if running ablation, just set TF activity to 0
         print('not using tf activity')
@@ -314,6 +316,7 @@ def deserialize_tr(serialized_example, g, use_motif_activity,
                 tf.cast(motif_activity,dtype=tf.bfloat16), \
                 tf.cast(rna,dtype=tf.float32), \
                 cell_type
+
 
 def gaussian_kernel(size: int, std: float):
     """Generate a Gaussian kernel for smoothing."""
@@ -416,7 +419,11 @@ def deserialize_val(serialized_example, g_val, use_motif_activity,
     motif_activity = tf.ensure_shape(tf.io.parse_tensor(data['motif_activity'], out_type=tf.float32), [693])
     motif_activity = tf.cast(motif_activity,dtype=tf.float32)
     motif_activity = tf.expand_dims(motif_activity,axis=0)
-    motif_activity = (motif_activity - motif_means) / (motif_std + 1.0e-06)
+    min_val = tf.reduce_min(motif_activity)
+    max_val = tf.reduce_max(motif_activity)
+    motif_activity = (motif_activity - min_val) / (max_val - min_val)
+    motif_activity = motif_activity + \
+        tf.math.abs(g.normal(motif_activity.shape,mean=0.0,stddev=0.0001,dtype=tf.float32))
 
     if not use_motif_activity: # if running ablation, just set TF activity to 0
         print('not using tf activity')

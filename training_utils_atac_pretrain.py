@@ -194,12 +194,14 @@ def deserialize_tr(serialized_example, g, use_motif_activity,
                                   axis=1)
     peaks_c_crop = tf.slice(peaks_center, [crop_size,0], [output_length-2*crop_size,-1]) # crop at the outset 
     # TF activity, cast to float32 and expand dims to allow for processing by model input FC layers
-    motif_activity = tf.ensure_shape(tf.io.parse_tensor(data['motif_activity'], out_type=tf.float16), [693])
+    motif_activity = tf.ensure_shape(tf.io.parse_tensor(data['motif_activity'], out_type=tf.float32), [693])
     motif_activity = tf.cast(motif_activity,dtype=tf.float32)
     motif_activity = tf.expand_dims(motif_activity,axis=0)
-    motif_activity = (motif_activity - motif_means) / (motif_std + 1.0e-06)
+    min_val = tf.reduce_min(motif_activity)
+    max_val = tf.reduce_max(motif_activity)
+    motif_activity = (motif_activity - min_val) / (max_val - min_val)
     motif_activity = motif_activity + \
-        g.normal(motif_activity.shape,mean=0.0,stddev=0.001,dtype=tf.float32)
+        tf.math.abs(g.normal(motif_activity.shape,mean=0.0,stddev=0.0001,dtype=tf.float32))
     
     if not use_motif_activity: # if running ablation, just set TF activity to 0
         print('not using tf activity')

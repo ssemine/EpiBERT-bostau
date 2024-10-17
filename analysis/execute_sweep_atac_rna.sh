@@ -32,14 +32,14 @@ python3 train_model_atac_rampage_test.py \
             --num_transformer_layers="8" \
             --dropout_rate="0.20" \
             --pointwise_dropout_rate="0.10" \
-            --num_heads="4" \
+            --num_heads="8" \
             --kernel_transformation="relu_kernel_transformation" \
             --savefreq=1 \
             --rectify="True" \
             --filter_list_seq="512,640,640,768,896,1024" \
             --filter_list_atac="32,64" \
-            --atac_mask_dropout=0.0 \
-            --atac_mask_dropout_val=0.0 \
+            --atac_mask_dropout=0.025 \
+            --atac_mask_dropout_val=0.025 \
             --log_atac="False" \
             --random_mask_size="128" \
             --use_atac="True" \
