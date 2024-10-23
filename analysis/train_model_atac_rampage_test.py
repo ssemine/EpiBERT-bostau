@@ -402,9 +402,77 @@ def main():
                     'gene_specific_corrs_ho': gene_specific_corrs_ho},
                     step=1)
         results_df_ho.to_csv('rampage_preds_test_genes_ho.tsv',sep='\t',index=False,header=True)
-
-
-
 # ---------------------------------------------------------------------------------------------------------------
+        
+        test_it,test_it_ho,tss_it,tss_it_ho,tss_it_ho_b = \
+                training_utils.return_distributed_iterators(wandb.config.gcs_path, wandb.config.gcs_path_holdout,
+                                                            GLOBAL_BATCH_SIZE, wandb.config.input_length,
+                                                            wandb.config.max_shift, wandb.config.output_length_ATAC,
+                                                            wandb.config.output_length, wandb.config.crop_size,
+                                                            wandb.config.output_res, args.num_parallel, 48,
+                                                            strategy, options,options_val, wandb.config.atac_mask_dropout,
+                                                            wandb.config.atac_mask_dropout_val,
+                                                            wandb.config.random_mask_size, wandb.config.log_atac,
+                                                            wandb.config.use_atac, wandb.config.use_seq, wandb.config.seed,
+                                                            wandb.config.val_data_seed, wandb.config.atac_corrupt_rate,
+                                                            wandb.config.test_steps, False,
+                                                            g, g_val,g_val_ho)
+
+        pred_list = [] # list to store predictions
+        true_list = [] # list to store true values
+        cell_type_list = [] # list to store predictions
+        gene_list = [] # list to store true values
+        target_list = [] # list to store predictions
+        output_list = [] # list to store true values
+        for k in range(wandb.config.tss_steps):
+            true, pred,gene,cell_type, target_rna, output_rna = strategy.run(val_step, args=(next(tss_it),))
+            for x in strategy.experimental_local_results(true): # flatten the true values
+                true_list.append(tf.reshape(x, [-1]))
+            for x in strategy.experimental_local_results(pred): # flatten the pred values
+                pred_list.append(tf.reshape(x, [-1]))
+            for x in strategy.experimental_local_results(cell_type): # flatten the true values
+                cell_type_list.append(tf.reshape(x, [-1]))
+            for x in strategy.experimental_local_results(gene): # flatten the pred values
+                gene_list.append(tf.reshape(x, [-1]))
+
+        cell_specific_corrs, gene_specific_corrs,results_df = training_utils.make_plots(tf.concat(true_list,0),
+                                                            tf.concat(pred_list,0),
+                                                            tf.concat(cell_type_list,0),
+                                                            tf.concat(gene_list,0), 5000)
+
+
+        print('cell_specific_correlation_test_nomotif: ' + str(cell_specific_corrs))
+        print('gene_specific_correlation_test_nomotif: ' + str(gene_specific_corrs))
+        results_df.to_csv('rampage_preds_test_genes_nomotif.tsv',sep='\t',index=False,header=True)
+
+        pred_list = [] # list to store predictions
+        true_list = [] # list to store true values
+        cell_type_list = [] # list to store predictions
+        gene_list = [] # list to store true values
+        target_list = [] # list to store predictions
+        output_list = [] # list to store true values
+        for k in range(wandb.config.tss_steps_ho):
+            true, pred,gene,cell_type, target_rna, output_rna = strategy.run(val_step_ho, args=(next(tss_it_ho),))
+            for x in strategy.experimental_local_results(true): # flatten the true values
+                true_list.append(tf.reshape(x, [-1]))
+            for x in strategy.experimental_local_results(pred): # flatten the pred values
+                pred_list.append(tf.reshape(x, [-1]))
+            for x in strategy.experimental_local_results(cell_type): # flatten the true values
+                cell_type_list.append(tf.reshape(x, [-1]))
+            for x in strategy.experimental_local_results(gene): # flatten the pred values
+                gene_list.append(tf.reshape(x, [-1]))
+
+
+        cell_specific_corrs_ho, gene_specific_corrs_ho,results_df_ho = training_utils.make_plots(tf.concat(true_list,0),
+                                                            tf.concat(pred_list,0),
+                                                            tf.concat(cell_type_list,0),
+                                                            tf.concat(gene_list,0), 5000)
+        print('cell_specific_correlation_ho_nomotif: ' + str(cell_specific_corrs_ho))
+        print('gene_specific_correlation_ho_nomotif: ' + str(gene_specific_corrs_ho))
+
+        results_df_ho.to_csv('rampage_preds_test_genes_ho_nomotif.tsv',sep='\t',index=False,header=True)
+
+
+
 if __name__ == '__main__':
     main()
