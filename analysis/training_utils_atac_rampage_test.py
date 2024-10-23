@@ -513,10 +513,10 @@ def return_dataset(gcs_path, tss_bool, split, batch, input_length, output_length
                 atac_mask_dropout, random_mask_size,
                 log_atac, use_atac, use_seq,
                 atac_corrupt_rate),
-            deterministic=False,
+            deterministic=True,
             num_parallel_calls=tf.data.AUTOTUNE)
 
-        return dataset.repeat(3).batch(batch).prefetch(tf.data.AUTOTUNE)
+        return dataset.batch(batch).repeat(5).prefetch(tf.data.AUTOTUNE)
 
     else:
         list_files = (tf.io.gfile.glob(os.path.join(gcs_path, split, wc)))
@@ -531,10 +531,10 @@ def return_dataset(gcs_path, tss_bool, split, batch, input_length, output_length
                 crop_size, output_res,
                 atac_mask_dropout, random_mask_size,
                 log_atac, use_atac, use_seq),
-            deterministic=False,
+            deterministic=True,
             num_parallel_calls=tf.data.AUTOTUNE)
 
-        return dataset.repeat(3).batch(batch).prefetch(tf.data.AUTOTUNE)
+        return dataset.batch(batch).repeat(5).prefetch(tf.data.AUTOTUNE)
 
 def return_distributed_iterators(gcs_path, gcs_path_ho, global_batch_size,
                                  input_length, max_shift, output_length_ATAC,
