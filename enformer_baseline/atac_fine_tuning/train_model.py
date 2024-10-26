@@ -110,7 +110,6 @@ def main():
             #wandb.init(mode="disabled")
             wandb.config.tpu=args.tpu_name
             wandb.config.gcs_path=args.gcs_path
-            wandb.config.gcs_path_TSS=args.gcs_path_TSS
             wandb.config.input_length=args.input_length
             wandb.config.num_epochs=args.num_epochs
             wandb.config.warmup_frac=args.warmup_frac
@@ -121,7 +120,6 @@ def main():
             
             wandb.config.train_examples=args.train_examples
             wandb.config.val_examples=args.val_examples
-            wandb.config.val_examples_TSS=args.val_examples_TSS
             
             run_name = '_'.join(['ENFORMER',
                                  'LR1-' + str(wandb.config.lr_base1),
