@@ -1,5 +1,9 @@
 #!/bin/bash -l
 
+export TPU_LOAD_LIBRARY=0
+export TPU_NAME=$1
+export ZONE=$2
+
 python3 train_model.py \
             --tpu_name="pod1" \
             --tpu_zone="europe-west4-a" \
