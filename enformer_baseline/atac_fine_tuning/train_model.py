@@ -171,14 +171,13 @@ def main():
 
                 
             
-            enformer_model = enformer.Enformer(output_heads_dict = {'human': 50})
+            enformer_model = enformer.Enformer(output_heads_dict = {'human': 34})
 
             date_string = f'{datetime.now():%Y-%m-%d %H:%M:%S%z}'
             date_string = date_string.replace(' ','_')
             
             checkpoint_name = wandb.config.model_save_dir + "/" + \
                             wandb.config.model_save_basename + "_" + date_string + "_" + wandb.run.name
-
 
             model_checkpoint = tf.train.Checkpoint(module=enformer_model)
 
