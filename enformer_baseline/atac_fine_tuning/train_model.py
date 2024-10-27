@@ -236,7 +236,7 @@ def main():
                     for k in enformer_model.trainable_variables:
                         var = k.values[0]
                         total_params += tf.size(var)
-                    print('total params: ' + str(total_params)) 
+                    print('total params: ' + str(total_params))
 
 
                 # main training step 
@@ -270,6 +270,8 @@ def main():
                 wandb.log({'human_val_loss': metric_dict['hg_val'].result().numpy()},
                           step=epoch_i)
                 pearsonsR=metric_dict['pearsonsR'].result()['PearsonR'].numpy()
+
+                val_pearsons.append(pearsonsR)
                 wandb.log({'human_val_tracks_pearsons': np.nanmean(pearsonsR)},
                           step=epoch_i)
                 print('human pearsonsR: ' + str(np.nanmean(pearsonsR)))
