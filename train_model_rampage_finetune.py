@@ -40,6 +40,8 @@ def main():
         filter_list_seq = ','.join(filter_list_seq)
         lr_base1 = '-'.join(input_ckpt.split('_')[-12].split('-')[1:])
         lr_base2 = '-'.join(input_ckpt.split('_')[-11].split('-')[1:])
+
+        
     else:
         seed = args.seed
         run_id = args.run_id
@@ -240,7 +242,7 @@ def main():
 
         manager = tf.train.CheckpointManager(ckpt,
                                                 directory=checkpoint_dir,
-                                                max_to_keep=25)
+                                                max_to_keep=50)
         
         # initialize functions for training and validation steps
         train_step, val_step, val_step_ho,build_step, metric_dict = \
@@ -278,7 +280,7 @@ def main():
             print('restored from checkpoint')
             print('restart training at epoch: ' + str(1+ batch_num.numpy()))
             print('restart at data batch: ' + str(batch_num.numpy()))
-            wandb.config.update({"num_epochs_to_start": batch_num.numpy()}, 
+            wandb.config.update({"num_epochs_to_start": batch_num.numpy()},
                                 allow_val_change=True)
         if wandb.config.load_init_FT:
             ckpt_FT=tf.train.Checkpoint(model=model)
