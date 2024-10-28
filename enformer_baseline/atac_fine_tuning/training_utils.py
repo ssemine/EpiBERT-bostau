@@ -209,7 +209,10 @@ def deserialize_tr(serialized_example,input_length=196608,max_shift=4,
     target = tf.math.pow(target,0.50)
     gauss_kernel = gaussian_kernel(3, 1)
     gauss_kernel = tf.cast(gauss_kernel, dtype=tf.float32) 
+    gauss_kernel = tf.reshape(gauss_kernel, [3, 1, 1])  # Reshape for convolution
+    target = tf.expand_dims(target, -1)
     target = tf.nn.conv1d(target, filters=gauss_kernel, stride=1, padding='SAME')
+    target = tf.squeeze(target, -1) 
     diff = tf.math.sqrt(tf.nn.relu(target - 65536.0 * tf.ones(target.shape)))
     target = tf.clip_by_value(target, clip_value_min=0.0, clip_value_max=65536.0) + diff
     target = tf.slice(target,
@@ -253,7 +256,10 @@ def deserialize_val(serialized_example,input_length=196608,max_shift=4, out_leng
     target = tf.math.pow(target,0.50)
     gauss_kernel = gaussian_kernel(3, 1)
     gauss_kernel = tf.cast(gauss_kernel, dtype=tf.float32) 
+    gauss_kernel = tf.reshape(gauss_kernel, [3, 1, 1])  # Reshape for convolution
+    target = tf.expand_dims(target, -1)
     target = tf.nn.conv1d(target, filters=gauss_kernel, stride=1, padding='SAME')
+    target = tf.squeeze(target, -1) 
     diff = tf.math.sqrt(tf.nn.relu(target - 65536.0 * tf.ones(target.shape)))
     target = tf.clip_by_value(target, clip_value_min=0.0, clip_value_max=65536.0) + diff
     target = tf.slice(target,

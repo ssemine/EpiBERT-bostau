@@ -160,7 +160,7 @@ def main():
                 training_utils.return_distributed_iterators(args.gcs_path,
                                                             GLOBAL_BATCH_SIZE,
                                                             196608,
-                                                            4,
+                                                            10,
                                                             1536,
                                                             args.num_targets,
                                                             args.num_parallel,
