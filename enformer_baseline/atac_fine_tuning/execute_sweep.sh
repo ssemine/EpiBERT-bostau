@@ -20,12 +20,12 @@ python3 train_model.py \
             --model_save_basename="enformer_atac" \
             --lr_base1="5.0e-06" \
             --lr_base2="5.0e-04" \
-            --gradient_clip="0.2" \
+            --gradient_clip="1.0" \
             --epsilon=1.0e-8 \
             --num_parallel=4 \
             --savefreq=1 \
             --train_examples=34021 \
             --val_examples=2213 \
-            --num_targets=34 \
+            --num_targets=5 \
             --use_enformer_weights="True" \
             --enformer_checkpoint_path="sonnet_weights"

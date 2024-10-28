@@ -171,7 +171,7 @@ def main():
 
                 
             
-            enformer_model = enformer.Enformer(output_heads_dict = {'human': 34})
+            enformer_model = enformer.Enformer(output_heads_dict = {'human': 5})
 
             date_string = f'{datetime.now():%Y-%m-%d %H:%M:%S%z}'
             date_string = date_string.replace(' ','_')
