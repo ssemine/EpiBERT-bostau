@@ -162,6 +162,13 @@ def return_train_val_functions(model,
     return train_step, val_step, build_step, metric_dict
 
 
+def gaussian_kernel(size: int, std: float):
+    """Generate a Gaussian kernel for smoothing."""
+    d = tf.range(-(size // 2), (size // 2) + 1, dtype=tf.float32)
+    gauss_kernel = tf.exp(-tf.square(d) / (2*std*std))
+    gauss_kernel = gauss_kernel / tf.reduce_sum(gauss_kernel)
+    return gauss_kernel[..., tf.newaxis, tf.newaxis]
+
 def deserialize_tr(serialized_example,input_length=196608,max_shift=4,
                    out_length=1536,num_targets=50, g=None):
     """Deserialize bytes stored in TFRecordFile."""
@@ -199,8 +206,12 @@ def deserialize_tr(serialized_example,input_length=196608,max_shift=4,
     target = tf.reshape(target,
                         (out_length, num_targets))
     target = tf.cast(target,dtype=tf.float32)
-    diff = tf.math.sqrt(tf.nn.relu(target - 64.0 * tf.ones(target.shape)))
-    target = tf.clip_by_value(target, clip_value_min=0.0, clip_value_max=64.0) + diff
+    target = tf.math.pow(target,0.50)
+    gauss_kernel = gaussian_kernel(3, 1)
+    gauss_kernel = tf.cast(gauss_kernel, dtype=tf.float32) 
+    target = tf.nn.conv1d(target, filters=gauss_kernel, stride=1, padding='SAME')
+    diff = tf.math.sqrt(tf.nn.relu(target - 65536.0 * tf.ones(target.shape)))
+    target = tf.clip_by_value(target, clip_value_min=0.0, clip_value_max=65536.0) + diff
     target = tf.slice(target,
                       [320,0],
                       [896,-1])
@@ -239,9 +250,12 @@ def deserialize_val(serialized_example,input_length=196608,max_shift=4, out_leng
     target = tf.reshape(target,
                         (out_length, num_targets))
     target = tf.cast(target,dtype=tf.float32)
-    diff = tf.math.sqrt(tf.nn.relu(target - 64.0 * tf.ones(target.shape)))
-    target = tf.clip_by_value(target, clip_value_min=0.0, clip_value_max=64.0) + diff
-
+    target = tf.math.pow(target,0.50)
+    gauss_kernel = gaussian_kernel(3, 1)
+    gauss_kernel = tf.cast(gauss_kernel, dtype=tf.float32) 
+    target = tf.nn.conv1d(target, filters=gauss_kernel, stride=1, padding='SAME')
+    diff = tf.math.sqrt(tf.nn.relu(target - 65536.0 * tf.ones(target.shape)))
+    target = tf.clip_by_value(target, clip_value_min=0.0, clip_value_max=65536.0) + diff
     target = tf.slice(target,
                       [320,0],
                       [896,-1])
@@ -545,8 +559,6 @@ def parse_args(parser):
                         type=int, help='train_examples')
     parser.add_argument('--val_examples', dest = 'val_examples',
                         type=int, help='val_examples')
-    parser.add_argument('--val_examples_TSS', dest = 'val_examples_TSS',
-                        type=int, help='val_examples_TSS')
     parser.add_argument('--enformer_checkpoint_path', dest = 'enformer_checkpoint_path',
                         help='enformer_checkpoint_path',
                         default=None)
