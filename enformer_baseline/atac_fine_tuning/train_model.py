@@ -171,7 +171,7 @@ def main():
 
                 
             
-            enformer_model = enformer.Enformer(output_heads_dict = {'human': 5})
+            enformer_model = enformer.Enformer(output_heads_dict = {'human': args.num_targets})
 
             date_string = f'{datetime.now():%Y-%m-%d %H:%M:%S%z}'
             date_string = date_string.replace(' ','_')
@@ -193,9 +193,11 @@ def main():
             scheduler2=optimizers.WarmUp(initial_learning_rate=wandb.config.lr_base2,
                                          warmup_steps=math.ceil(wandb.config.warmup_frac*wandb.config.total_steps),
                                          decay_schedule_fn=scheduler2)
-            optimizer1 = tf.keras.optimizers.Adam(learning_rate=scheduler1,epsilon=wandb.config.epsilon)
+            optimizer1 = tfa.optimizers.AdamW(learning_rate=scheduler1, weight_decay=1.0e-06,
+                                             epsilon=wandb.config.epsilon)
             
-            optimizer2 = tf.keras.optimizers.Adam(learning_rate=scheduler2,epsilon=wandb.config.epsilon)
+            optimizer2 = tfa.optimizers.AdamW(learning_rate=scheduler2,weight_decay=1.0e-06,
+                                                  epsilon=wandb.config.epsilon)
             optimizers_in = optimizer1,optimizer2
 
             metric_dict = {}
