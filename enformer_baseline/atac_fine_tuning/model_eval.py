@@ -100,11 +100,9 @@ def main():
             #wandb.init(mode="disabled")
             wandb.config.tpu=args.tpu_name
             wandb.config.gcs_path=args.gcs_path
-            wandb.config.gcs_path_TSS=args.gcs_path_TSS
             wandb.config.input_length=args.input_length
             
             wandb.config.test_examples=args.test_examples
-            wandb.config.tss_examples=args.tss_examples
             
             run_name = 'ENFORMER_test'
             date_string = f'{datetime.now():%Y-%m-%d %H:%M:%S%z}'
@@ -125,20 +123,16 @@ def main():
             GLOBAL_BATCH_SIZE = BATCH_SIZE_PER_REPLICA*NUM_REPLICAS
             print(GLOBAL_BATCH_SIZE)
             num_test=wandb.config.test_examples
-            num_tss=wandb.config.tss_examples
 
             wandb.config.update({"test_steps" : num_test // GLOBAL_BATCH_SIZE + 1},
                                 allow_val_change=True)
-            wandb.config.update({"tss_steps" : num_tss // GLOBAL_BATCH_SIZE + 1},
-                                allow_val_change=True)
-            
 
-            test_it, tss_it, build_it =  \
+            test_it, build_it =  \
                 eval_utils.return_distributed_iterators(args.gcs_path,
                                                         args.gcs_path_TSS,
                                                             GLOBAL_BATCH_SIZE,
                                                             196608,
-                                                            4,
+                                                            34,
                                                             1536,
                                                             args.num_targets,
                                                             args.num_parallel,
@@ -146,14 +140,14 @@ def main():
                                                             options)
 
             print('made iterators')
-            enformer_model = enformer.Enformer(output_heads_dict = {'human': 50})
+            enformer_model = enformer.Enformer(output_heads_dict = {'human': args.num_targets})
 
             date_string = f'{datetime.now():%Y-%m-%d %H:%M:%S%z}'
             date_string = date_string.replace(' ','_')
             
             metric_dict = {}
 
-            test_step,test_step_tss, build_step,metric_dict = eval_utils.return_test_build_functions(enformer_model,
+            test_step, build_step,metric_dict = eval_utils.return_test_build_functions(enformer_model,
                                                                                         strategy,
                                                                                         metric_dict)
             
@@ -169,49 +163,33 @@ def main():
             status = checkpoint.restore(wandb.config.checkpoint_path,options=options)
             status.assert_existing_objects_matched()
 
-            for step in range(wandb.config.test_steps):
-                strategy.run(test_step,args = (next(test_it),))
-
-            pearsonsR=metric_dict['pearsonsR'].result()['PearsonR'].numpy()
-            print('human test pearsonsR: ' + str(np.nanmean(pearsonsR)))
-            R2=metric_dict['R2'].result()['R2'].numpy()
-            print('human test r2: ' + str(np.nanmean(R2)))
-            
-            print('computing TSS quant metrics')
+            print('computing quant metrics')
             pred_list = [] # list to store predictions
             true_list = [] # list to store true values
-            gene_list = []
+            #gene_list = []
             cell_list = []
             for step in range(wandb.config.tss_steps):
-                pred, true, gene, cell= strategy.run(test_step_tss,args = (next(tss_it),))
+                pred, true, cell= strategy.run(test_step,args = (next(test_it),))
                 for x in strategy.experimental_local_results(true): # flatten the true values
                     true_list.append(tf.reshape(x, [-1]))
                 for x in strategy.experimental_local_results(pred): # flatten the pred values
                     pred_list.append(tf.reshape(x, [-1]))
-                for x in strategy.experimental_local_results(gene): # flatten the pred values
-                    gene_list.append(tf.reshape(x, [-1]))
+                #for x in strategy.experimental_local_results(gene): # flatten the pred values
+                #    gene_list.append(tf.reshape(x, [-1]))
                 for x in strategy.experimental_local_results(cell): # flatten the pred values
                     cell_list.append(tf.reshape(x, [-1]))
 
-            corrs_overall = eval_utils.make_plots(tf.concat(true_list,0),
-                                                             tf.concat(pred_list,0),
-                                                             tf.concat(cell_list,0),
-                                                             tf.concat(gene_list,0))
-            
-            cell_spec_mean_corrs, \
-                gene_spec_mean_corrs = corrs_overall
-            
             results_df = pd.DataFrame()
             results_df['true'] = tf.concat(true_list,0)
             results_df['pred'] = tf.concat(pred_list,0)
             results_df['cell_type_encoding'] = tf.concat(cell_list,0)
-            results_df['gene_encoding'] = tf.concat(gene_list,0)
+            #results_df['gene_encoding'] = tf.concat(gene_list,0)
         
 
-            print('cell_spec_mean_corrs: ' + str(cell_spec_mean_corrs))
-            print('gene_spec_mean_corrs: ' + str(gene_spec_mean_corrs))
+            #print('cell_spec_mean_corrs: ' + str(cell_spec_mean_corrs))
+            #print('gene_spec_mean_corrs: ' + str(gene_spec_mean_corrs))
                 
-            results_df.to_csv('test_set/test_set_results.tsv',sep='\t',header=True,index=False)
+            results_df.to_csv('test_set_results.tsv',sep='\t',header=True,index=False)
 
     sweep_id = wandb.sweep(sweep_config, project=args.wandb_project)
     wandb.agent(sweep_id, function=sweep_train)
