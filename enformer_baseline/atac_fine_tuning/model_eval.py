@@ -164,8 +164,9 @@ def main():
             print('computing quant metrics')
             pred_list = [] # list to store predictions
             true_list = [] # list to store true values
-            #gene_list = []
+            gene_list = []
             cell_list = []
+            counter = 0 
             for step in range(wandb.config.test_steps):
                 pred, true, cell= strategy.run(test_step,args = (next(test_it),))
                 for x in strategy.experimental_local_results(true): # flatten the true values
@@ -176,12 +177,14 @@ def main():
                 #    gene_list.append(tf.reshape(x, [-1]))
                 for x in strategy.experimental_local_results(cell): # flatten the pred values
                     cell_list.append(tf.reshape(x, [-1]))
+                    gene_list.append(counter)
+                    counter += 1
 
             results_df = pd.DataFrame()
             results_df['true'] = tf.concat(true_list,0)
             results_df['pred'] = tf.concat(pred_list,0)
             results_df['cell_type_encoding'] = tf.concat(cell_list,0)
-            #results_df['gene_encoding'] = tf.concat(gene_list,0)
+            results_df['gene_encoding'] = gene_list
         
 
             #print('cell_spec_mean_corrs: ' + str(cell_spec_mean_corrs))
