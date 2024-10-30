@@ -198,7 +198,7 @@ def return_dataset(gcs_path,
                             deterministic=False,
                             num_parallel_calls=num_parallel)
 
-    return dataset.batch(batch).prefetch(tf.data.AUTOTUNE).repeat(3)
+    return dataset.repeat(3).batch(batch).prefetch(tf.data.AUTOTUNE)
 
 def return_distributed_iterators(gcs_path,
                                  global_batch_size,

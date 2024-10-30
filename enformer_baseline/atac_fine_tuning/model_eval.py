@@ -179,6 +179,18 @@ def main():
                     cell_list.append(tf.reshape(x, [-1]))
                     gene_list.append(counter)
                     counter += 1
+                if step % 5000 == 0:
+                    results_df = pd.DataFrame()
+                    results_df['true'] = tf.concat(true_list,0)
+                    results_df['pred'] = tf.concat(pred_list,0)
+                    results_df['cell_type_encoding'] = tf.concat(cell_list,0)
+                    results_df['gene_encoding'] = gene_list
+
+                    results_df.to_csv('test_set_results' + step + '.tsv',sep='\t',header=True,index=False)
+                    pred_list = [] # list to store predictions
+                    true_list = [] # list to store true values
+                    gene_list = []
+                    cell_list = []
 
             results_df = pd.DataFrame()
             results_df['true'] = tf.concat(true_list,0)
@@ -186,7 +198,6 @@ def main():
             results_df['cell_type_encoding'] = tf.concat(cell_list,0)
             results_df['gene_encoding'] = gene_list
         
-
             #print('cell_spec_mean_corrs: ' + str(cell_spec_mean_corrs))
             #print('gene_spec_mean_corrs: ' + str(gene_spec_mean_corrs))
                 
