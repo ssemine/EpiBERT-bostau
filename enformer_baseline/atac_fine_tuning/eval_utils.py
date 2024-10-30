@@ -168,8 +168,8 @@ def deserialize_val(serialized_example,input_length=196608,out_length=1536,num_t
                       [320,0],
                       [896,-1])
     
-    top_zeros = tf.zeros((224, 34),dtype=tf.float32)
-    center_ones = tf.ones((5, 34),dtype=tf.float32)
+    top_zeros = tf.zeros((446, 34),dtype=tf.float32)
+    center_ones = tf.ones((4, 34),dtype=tf.float32)
     # Concatenate along the 0th dimension
     center_mask = tf.concat([top_zeros, center_ones, top_zeros], axis=0)
     cell_types = tf.range(0,34)
