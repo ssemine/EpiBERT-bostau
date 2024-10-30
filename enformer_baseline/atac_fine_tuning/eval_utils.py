@@ -108,8 +108,8 @@ def return_test_build_functions(model,
                          dtype=tf.float32)
         output = model(sequence, is_training=False)['human']
 
-        pred = tf.reduce_sum(output*center_mask,axis=0)
-        true = tf.reduce_sum(target*center_mask,axis=0)
+        pred = tf.reduce_sum((output*center_mask), axis=1)
+        true = tf.reduce_sum((target*center_mask), axis=1)
 
         return pred, true, cell_types
 
