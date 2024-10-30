@@ -482,54 +482,16 @@ def parse_args(parser):
                         type=int, help='batch_size')
     parser.add_argument('--num_epochs', dest = 'num_epochs',
                         type=int, help='num_epochs')
-    parser.add_argument('--warmup_frac', dest = 'warmup_frac',
-                        default=0.0,
-                        type=float, help='warmup_frac')
-    parser.add_argument('--patience', dest = 'patience',
-                        type=int, help='patience for early stopping')
-    parser.add_argument('--min_delta', dest = 'min_delta',
-                        type=float, help='min_delta for early stopping')
-    parser.add_argument('--model_save_dir',
-                        dest='model_save_dir',
-                        type=str)
-    parser.add_argument('--model_save_basename',
-                        dest='model_save_basename',
-                        type=str)
-    parser.add_argument('--use_enformer_weights',
-                        dest='use_enformer_weights',
-                        type=str)
     parser.add_argument('--input_length',
                         dest='input_length',
                         default=196608,
                         type=int,
                         help='input_length')
-    parser.add_argument('--lr_base1',
-                        dest='lr_base1',
-                        default="1.0e-06",
-                        help='lr_base1')
-    parser.add_argument('--lr_base2',
-                        dest='lr_base2',
-                        default="1.0e-04",
-                        help='lr_base2')
     parser.add_argument('--epsilon',
                         dest='epsilon',
                         default=1.0e-8,
                         type=float,
                         help= 'epsilon')
-    parser.add_argument('--savefreq',
-                        dest='savefreq',
-                        type=int,
-                        help= 'savefreq')
-    parser.add_argument('--total_steps',
-                        dest='total_steps',
-                        type=int,
-                        default=0,
-                        help= 'total_steps')
-    parser.add_argument('--gradient_clip',
-                        dest='gradient_clip',
-                        type=str,
-                        default="5.0",
-                        help= 'gradient_clip')
     parser.add_argument('--num_targets',
                         dest='num_targets',
                         type=int,
@@ -537,8 +499,8 @@ def parse_args(parser):
                         help= 'num_targets')
     parser.add_argument('--test_examples', dest = 'test_examples',
                         type=int, help='train_examples')
-    parser.add_argument('--enformer_checkpoint_path', dest = 'enformer_checkpoint_path',
-                        help='enformer_checkpoint_path',
+    parser.add_argument('--checkpoint_path', dest = 'checkpoint_path',
+                        help='checkpoint_path',
                         default=None)
     
     args = parser.parse_args()

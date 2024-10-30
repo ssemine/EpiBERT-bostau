@@ -129,7 +129,6 @@ def main():
 
             test_it, build_it =  \
                 eval_utils.return_distributed_iterators(args.gcs_path,
-                                                        args.gcs_path_TSS,
                                                             GLOBAL_BATCH_SIZE,
                                                             196608,
                                                             34,
@@ -168,7 +167,7 @@ def main():
             true_list = [] # list to store true values
             #gene_list = []
             cell_list = []
-            for step in range(wandb.config.tss_steps):
+            for step in range(wandb.config.test_steps):
                 pred, true, cell= strategy.run(test_step,args = (next(test_it),))
                 for x in strategy.experimental_local_results(true): # flatten the true values
                     true_list.append(tf.reshape(x, [-1]))
