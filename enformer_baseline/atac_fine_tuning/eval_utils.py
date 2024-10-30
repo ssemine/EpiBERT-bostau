@@ -73,10 +73,9 @@ consolidate into single simpler function
 """
 
 
-def return_train_val_functions(model,
+def return_test_build_functions(model,
                                strategy,
-                               metric_dict,
-                               num_replicas):
+                               metric_dict):
     """Returns distributed train and validation functions for
     a given list of organisms
     Args:
@@ -96,13 +95,6 @@ def return_train_val_functions(model,
     train_steps is the # steps in a single epoch
     val_steps is the # steps to fully iterate over validation set
     """
-    metric_dict["hg_val"] = tf.keras.metrics.Mean("hg_val_loss",
-                                                  dtype=tf.float32)
-    
-    metric_dict['pearsonsR'] = metrics.MetricDict({'PearsonR': metrics.PearsonR(reduce_axis=(0,1))})
-    metric_dict['R2'] = metrics.MetricDict({'R2': metrics.R2(reduce_axis=(0,1))})
-    loss_fn = tf.keras.losses.Poisson(reduction=tf.keras.losses.Reduction.NONE)
-
 
     @tf.function(jit_compile=True)
     def test_step(inputs):
@@ -115,15 +107,9 @@ def return_train_val_functions(model,
         cell_types=tf.cast(inputs['cell_types'],
                          dtype=tf.float32)
         output = model(sequence, is_training=False)['human']
-        loss = tf.reduce_mean(loss_fn(target,
-                                      output)) * (1. / num_replicas)
-        
 
         pred = tf.reduce_sum(output*center_mask,axis=0)
         true = tf.reduce_sum(target*center_mask,axis=0)
-        metric_dict["hg_val"].update_state(loss)
-        metric_dict['pearsonsR'].update_state(target, output)
-        metric_dict['R2'].update_state(target, output)
 
         return pred, true, cell_types
 
