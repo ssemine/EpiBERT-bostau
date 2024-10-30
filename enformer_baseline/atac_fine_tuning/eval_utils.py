@@ -193,7 +193,7 @@ def return_dataset(gcs_path,
     """
     return a tf dataset object for given gcs path
     """
-    wc = str(split) + "*.tfr"
+    wc = "test*.tfr"
     
     list_files = (tf.io.gfile.glob(os.path.join(gcs_path,
                                                 wc)))
