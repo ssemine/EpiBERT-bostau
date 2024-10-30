@@ -131,12 +131,12 @@ def main():
                 eval_utils.return_distributed_iterators(args.gcs_path,
                                                             GLOBAL_BATCH_SIZE,
                                                             196608,
-                                                            34,
-                                                            1536,
                                                             args.num_targets,
+                                                            1536,
                                                             args.num_parallel,
                                                             strategy,
                                                             options)
+            
 
             print('made iterators')
             enformer_model = enformer.Enformer(output_heads_dict = {'human': args.num_targets})

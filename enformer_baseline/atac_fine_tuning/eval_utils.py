@@ -141,84 +141,20 @@ def return_train_val_functions(model,
         
     return test_step, build_step, metric_dict
 
-
-def gaussian_kernel(size: int, std: float):
-    """Generate a Gaussian kernel for smoothing."""
-    d = tf.range(-(size // 2), (size // 2) + 1, dtype=tf.float32)
-    gauss_kernel = tf.exp(-tf.square(d) / (2*std*std))
-    gauss_kernel = gauss_kernel / tf.reduce_sum(gauss_kernel)
-    return gauss_kernel[..., tf.newaxis, tf.newaxis]
-
-def deserialize_tr(serialized_example,input_length=196608,max_shift=4,
-                   out_length=1536,num_targets=50, g=None):
-    """Deserialize bytes stored in TFRecordFile."""
-    feature_map = {
-      'sequence': tf.io.FixedLenFeature([], tf.string),
-      'target': tf.io.FixedLenFeature([], tf.string),
-    }
-    
-    data = tf.io.parse_example(serialized_example, feature_map)
-
-    ### stochastic sequence shift and gaussian noise
-    rev_comp = tf.math.round(g.uniform([], 0, 1))
-
-    shift = g.uniform(shape=(),
-                      minval=0,
-                      maxval=max_shift,
-                      dtype=tf.int32)
-
-    for k in range(max_shift):
-        if k == shift:
-            interval_end = input_length + k
-            seq_shift = k
-        else:
-            seq_shift=0
-    
-    input_seq_length = input_length + max_shift
-
-    example = tf.io.parse_example(serialized_example, feature_map)
-    sequence = tf.io.decode_raw(example['sequence'], tf.bool)
-    sequence = tf.reshape(sequence, (input_length + max_shift, 4))
-    sequence = tf.cast(sequence, tf.float32)
-    sequence = tf.slice(sequence, [seq_shift,0],[input_length,-1])
-    
-    target = tf.io.decode_raw(example['target'], tf.float16)
-    target = tf.reshape(target,
-                        (out_length, num_targets))
-    target = tf.cast(target,dtype=tf.float32)
-    diff = tf.math.sqrt(tf.nn.relu(target - 65536.0 * tf.ones(target.shape)))
-    target = tf.clip_by_value(target, clip_value_min=0.0, clip_value_max=65536.0) + diff
-    target = tf.slice(target,
-                      [320,0],
-                      [896,-1])
-    
-    if rev_comp == 1:
-        sequence = tf.gather(sequence, [3, 2, 1, 0], axis=-1)
-        sequence = tf.reverse(sequence, axis=[0])
-        target = tf.reverse(target,axis=[0])
-    
-    return {'sequence': tf.ensure_shape(sequence,
-                                        [input_length,4]),
-            'target': tf.ensure_shape(target,
-                                      [896,num_targets])}
-            
-def deserialize_val(serialized_example,input_length=196608,max_shift=4, out_length=1536,num_targets=50):
+def deserialize_val(serialized_example,input_length=196608,out_length=1536,num_targets=50):
     """Deserialize bytes stored in TFRecordFile."""
     feature_map = {
       'sequence': tf.io.FixedLenFeature([], tf.string),
       'target': tf.io.FixedLenFeature([], tf.string)
     }
     
-    shift = 2
-    input_seq_length = input_length + max_shift
-    interval_end = input_length + shift
-    
+    shift = 5
     ### rev_comp
     #rev_comp = random.randrange(0,2)
 
     example = tf.io.parse_example(serialized_example, feature_map)
     sequence = tf.io.decode_raw(example['sequence'], tf.bool)
-    sequence = tf.reshape(sequence, (input_length + max_shift, 4))
+    sequence = tf.reshape(sequence, (input_length + 10, 4))
     sequence = tf.cast(sequence, tf.float32)
     sequence = tf.slice(sequence, [shift,0],[input_length,-1])
     
@@ -236,7 +172,7 @@ def deserialize_val(serialized_example,input_length=196608,max_shift=4, out_leng
     center_ones = tf.ones((5, 34),dtype=tf.float32)
     # Concatenate along the 0th dimension
     center_mask = tf.concat([top_zeros, center_ones, top_zeros], axis=0)
-    cell_types = tf.range(0,50)
+    cell_types = tf.range(0,34)
     return {'sequence': tf.ensure_shape(sequence,
                                         [input_length,4]),
             'target': tf.ensure_shape(target,
@@ -247,16 +183,12 @@ def deserialize_val(serialized_example,input_length=196608,max_shift=4, out_leng
                                            [num_targets,])}
 
 def return_dataset(gcs_path,
-                   split,
                    batch,
                    input_length,
-                   max_shift,
                    out_length,
                    num_targets,
                    options,
-                   num_parallel,
-                   num_epoch,
-                   g):
+                   num_parallel):
 
     """
     return a tf dataset object for given gcs path
@@ -272,73 +204,48 @@ def return_dataset(gcs_path,
                                       compression_type='ZLIB',
                                       num_parallel_reads=num_parallel)
     dataset = dataset.with_options(options)
-    if split == 'train':
-        dataset = dataset.map(lambda record: deserialize_tr(record,
-                                                         input_length,
-                                                         max_shift,
-                                                         out_length,
-                                                         num_targets,
-                                                            g),
-                              deterministic=False,
-                              num_parallel_calls=num_parallel)
-        return dataset.repeat(num_epoch).batch(batch).prefetch(tf.data.AUTOTUNE)
-        
-    else:
 
-        dataset = dataset.map(lambda record: deserialize_val(record,
-                                                            input_length,
-                                                            max_shift,
-                                                            out_length,
-                                                            num_targets),
-                                deterministic=False,
-                                num_parallel_calls=num_parallel)
+    dataset = dataset.map(lambda record: deserialize_val(record,
+                                                        input_length,
+                                                        out_length,
+                                                        num_targets),
+                            deterministic=False,
+                            num_parallel_calls=num_parallel)
 
-        return dataset.batch(batch,drop_remainder=True).prefetch(tf.data.AUTOTUNE).repeat(num_epoch)
-
+    return dataset.batch(batch).prefetch(tf.data.AUTOTUNE).repeat(3)
 
 def return_distributed_iterators(gcs_path,
                                  global_batch_size,
                                  input_length,
-                                 max_shift,
-                                 out_length,
                                  num_targets,
+                                 out_length,
                                  num_parallel_calls,
-                                 num_epoch,
                                  strategy,
-                                 options,
-                                 g):
+                                 options):
     """ 
     returns train + val dictionaries of distributed iterators
     for given heads_dictionary
     """
     with strategy.scope():
         test_data = return_dataset(gcs_path,
-                                 "test",
                                  global_batch_size,
                                  input_length,
-                                 max_shift,
                                  out_length,
                                  num_targets,
                                  options,
-                                 num_parallel_calls,
-                                 num_epoch,
-                                  g)
+                                 num_parallel_calls)
         
             
         test_dist= strategy.experimental_distribute_dataset(test_data)
         test_data_it = iter(test_dist)
 
         build_data = return_dataset(gcs_path,
-                                 "valid",
                                  global_batch_size,
                                  input_length,
-                                 max_shift,
                                  out_length,
                                  num_targets,
                                  options,
-                                 num_parallel_calls,
-                                 num_epoch,
-                                  g)
+                                 num_parallel_calls)
             
         build_dist= strategy.experimental_distribute_dataset(build_data)
         build_data_it = iter(build_dist)
@@ -346,113 +253,6 @@ def return_distributed_iterators(gcs_path,
     return build_data_it,test_data_it
 
 
-def make_plots(y_trues,
-               y_preds, 
-               cell_types, 
-               gene_map):
-
-    results_df = pd.DataFrame()
-    results_df['true'] = y_trues
-    results_df['pred'] = y_preds
-    results_df['cell_type_encoding'] = cell_types
-    results_df['gene_encoding'] = gene_map
-    
-    results_df=results_df.groupby(['gene_encoding', 'cell_type_encoding']).agg({'true': 'sum', 'pred': 'sum'})
-    results_df['true'] = np.log2(1.0+results_df['true'])
-    results_df['pred'] = np.log2(1.0+results_df['pred'])
-    
-    
-    #results_df['true_zscore'] = df.groupby('cell_type_encoding')['true'].apply(lambda x: (x - x.mean())/x.std())
-    results_df['true_zscore']=results_df.groupby(['cell_type_encoding']).true.transform(lambda x : zscore(x))
-    #results_df['pred_zscore'] = df.groupby('cell_type_encoding')['pred'].apply(lambda x: (x - x.mean())/x.std())
-    results_df['pred_zscore']=results_df.groupby(['cell_type_encoding']).pred.transform(lambda x : zscore(x))
-    
-    true_zscore=results_df[['true_zscore']].to_numpy()[:,0]
-
-    pred_zscore=results_df[['pred_zscore']].to_numpy()[:,0]
-
-    try: 
-        cell_specific_corrs=results_df.groupby('cell_type_encoding')[['true_zscore','pred_zscore']].corr(method='pearson').unstack().iloc[:,1].tolist()
-        cell_specific_corrs_raw=results_df.groupby('cell_type_encoding')[['true','pred']].corr(method='pearson').unstack().iloc[:,1].tolist()
-    except np.linalg.LinAlgError as err:
-        cell_specific_corrs = [0.0] * len(np.unique(cell_types))
-
-    try: 
-        gene_specific_corrs=results_df.groupby('gene_encoding')[['true_zscore','pred_zscore']].corr(method='pearson').unstack().iloc[:,1].tolist()
-        gene_specific_corrs_raw=results_df.groupby('gene_encoding')[['true','pred']].corr(method='pearson').unstack().iloc[:,1].tolist()
-        #gene_specific_corrs_zscore=results_df.groupby('gene_encoding')[['true_zscore','pred_zscore']].corr(method='pearson').unstack().iloc[:,1].tolist()
-    except np.linalg.LinAlgError as err:
-        gene_specific_corrs = [0.0] * len(np.unique(gene_map))
-    
-    corrs_overall = np.nanmean(cell_specific_corrs), np.nanmean(gene_specific_corrs), \
-                        np.nanmean(cell_specific_corrs_raw), np.nanmean(gene_specific_corrs_raw)
-                        
-    return corrs_overall
-
-
-def early_stopping(current_val_loss,
-                   logged_val_losses,
-                   current_pearsons,
-                   logged_pearsons,
-                   current_epoch,
-                   best_epoch,
-                   save_freq,
-                   patience,
-                   patience_counter,
-                   min_delta,
-                   model_checkpoint,
-                   checkpoint_name):
-    """early stopping function
-    Args:
-        current_val_loss: current epoch val loss
-        logged_val_losses: previous epochs val losses
-        current_epoch: current epoch number
-        save_freq: frequency(in epochs) with which to save checkpoints
-        patience: # of epochs to continue w/ stable/increasing val loss
-                  before terminating training loop
-        patience_counter: # of epochs over which val loss hasn't decreased
-        min_delta: minimum decrease in val loss required to reset patience 
-                   counter
-        model: model object
-        save_directory: cloud bucket location to save model
-        model_parameters: log file of all model parameters 
-        saved_model_basename: prefix for saved model dir
-    Returns:
-        stop_criteria: bool indicating whether to exit train loop
-        patience_counter: # of epochs over which val loss hasn't decreased
-        best_epoch: best epoch so far 
-    """
-    ### check if min_delta satisfied
-    try: 
-        best_loss = min(logged_val_losses[:-1])
-        best_pearsons=max(logged_pearsons[:-1])
-        
-    except ValueError:
-        best_loss = current_val_loss
-        best_pearsons = current_pearsons
-        
-    stop_criteria = False
-    ## if min delta satisfied then log loss
-    
-    if (current_val_loss >= (best_loss - min_delta)):# and (current_pearsons <= best_pearsons):
-        patience_counter += 1
-        if patience_counter >= patience:
-            stop_criteria=True
-    else:
-        best_epoch = np.argmin(logged_val_losses)
-        ## save current model
-            ### write to logging file in saved model dir to model parameters and current epoch info    
-        patience_counter = 0
-        stop_criteria = False
-        
-    if (((current_epoch % save_freq) == 0) and (not stop_criteria)):
-        print('Saving model...')
-
-        model_checkpoint.save(checkpoint_name + '/' + 'iteration/' + str(current_epoch))
-    
-    return stop_criteria, patience_counter, best_epoch
-        
-        
 def parse_args(parser):
     """Loads in command line arguments
     """
