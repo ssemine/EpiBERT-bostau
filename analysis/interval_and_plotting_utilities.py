@@ -8,11 +8,9 @@ import shutil
 import subprocess
 import sys
 import time
-sys.path.insert(0, '/home/jupyter/repos/genformer')
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-
 
 import pybedtools as pybt
 import tabix as tb
@@ -30,7 +28,6 @@ from kipoiseq import Interval
 import pyfaidx
 import kipoiseq
 
-import src.models.aformer_atac as genformer
 import logomaker
 
 def one_hot(sequence):
@@ -91,7 +88,8 @@ def get_per_base_score_f(start, end, score, base):
 
 
 def return_bg_interval(atac_bedgraph,
-                         chrom,interval_start,interval_end,num_bins,resolution):
+                       chrom,interval_start,
+                       interval_end,num_bins,resolution):
     
     interval_str = '\t'.join([chrom, 
                               str(interval_start),
@@ -190,11 +188,10 @@ class genformer_model:
         
         print('ran test input')
         ckpt = tf.train.Checkpoint(model=self.model)
-        status = ckpt.restore(model_checkpoint)
+        status = ckpt.restore(model_checkpoint).expect_partial()
         status.assert_existing_objects_matched()
         print('loaded weights')
         
-    
     def predict_on_batch_dist(self, strategy, inputs):
         
         @tf.function
@@ -257,29 +254,78 @@ class genformer_model:
     
 
 class genformer_model_nostrat:
-    def __init__(self, model, model_checkpoint):
-        self.model = model
+    def __init__(self, model1,model2, model1_checkpoint,model2_checkpoint):
+        self.model1 = model1
+        self.model2 = model2
         
         dummy_seq = tf.ones((1,524288,4),dtype=tf.float32)
         dummy_atac = tf.ones((1,131072,1),dtype=tf.float32)
         dummy_motif = tf.ones((1,1,693),dtype=tf.float32)
         inputs = dummy_seq,dummy_atac,dummy_motif
-        print('loading')
 
-        self.model(inputs,training=False)
-
-        print('ran test input')
-        ckpt = tf.train.Checkpoint(model=self.model)
-        status = ckpt.restore(model_checkpoint)
+        ckpt = tf.train.Checkpoint(model=self.model1)
+        status = ckpt.restore(model1_checkpoint).expect_partial()
         status.assert_existing_objects_matched()
-        print('loaded weights')
-        
-    
+
+        ckpt2 = tf.train.Checkpoint(model=self.model2)
+        status2 = ckpt2.restore(model2_checkpoint).expect_partial()
+        status2.assert_existing_objects_matched()
+        print('loaded checkpoints')
+            
     def predict_on_batch_dist(self, inputs):
         
-        output,att_matrices,att_matrices_norm,out_performer,other_data = self.model.predict_on_batch(inputs)
+        output1,att_matrices1 = self.model1.predict_on_batch(inputs)
+        output2,att_matrices2 = self.model2.predict_on_batch(inputs)
 
-        return output,att_matrices,att_matrices_norm,out_performer,other_data
+        output = tf.math.add(output1,output2) / 2.0
+        
+        return output[0,:,0]
+
+    def ca_qtl_score(self, inputs,inputs_mut):
+
+        # model1
+        output,att_matrices = self.model1.predict_on_batch(inputs[0]) # forward
+        output_score = tf.reduce_sum(output[0,2044:2047,0]).numpy()
+        output_rev,att_matrices_rev = self.model1.predict_on_batch(inputs[1]) # reverse
+        output_rev_score = tf.reduce_sum(tf.reverse(output_rev,axis=[1])[0,2044:2047,0]).numpy()
+        
+        output_mut,att_matrices_mut = self.model1.predict_on_batch(inputs_mut[0]) # forward mut 
+        output_mut_score = tf.reduce_sum(output_mut[0,2044:2047,0]).numpy()
+        output_mut_rev,att_matrices_mut_rev = self.model1.predict_on_batch(inputs_mut[1]) # reverse mut 
+        output_mut_rev_score = tf.reduce_sum(tf.reverse(output_mut_rev,axis=[1])[0,2044:2047,0]).numpy()
+
+        # compute mean signals
+        output_wt_1 = (output[0,:,0] + tf.reverse(output_rev,axis=[1])[0,:,0]) / 2.0 # mean WT
+        output_mut_seq_1 = (output_mut[0,:,0] + tf.reverse(output_mut_rev,axis=[1])[0,:,0]) / 2.0
+
+        caqtl_score_1 = (np.log2((1.0+output_score) / (1.0+output_mut_score)) + \
+                        np.log2((1.0+output_rev_score) / (1.0+output_mut_rev_score)))/2.0
+
+        # model2
+        output,att_matrices = self.model2.predict_on_batch(inputs[0]) # forward
+        output_score = tf.reduce_sum(output[0,2044:2047,0]).numpy()
+        output_rev,att_matrices_rev = self.model2.predict_on_batch(inputs[1]) # reverse
+        output_rev_score = tf.reduce_sum(tf.reverse(output_rev,axis=[1])[0,2044:2047,0]).numpy()
+        
+        output_mut,att_matrices_mut = self.model2.predict_on_batch(inputs_mut[0]) # forward mut 
+        output_mut_score = tf.reduce_sum(output_mut[0,2044:2047,0]).numpy()
+        output_mut_rev,att_matrices_mut_rev = self.model2.predict_on_batch(inputs_mut[1]) # reverse mut 
+        output_mut_rev_score = tf.reduce_sum(tf.reverse(output_mut_rev,axis=[1])[0,2044:2047,0]).numpy()
+
+        # compute mean signals
+        output_wt_2 = (output[0,:,0] + tf.reverse(output_rev,axis=[1])[0,:,0]) / 2.0 # mean WT
+        output_mut_seq_2 = (output_mut[0,:,0] + tf.reverse(output_mut_rev,axis=[1])[0,:,0]) / 2.0
+
+        caqtl_score_2 = (np.log2((1.0+output_score) / (1.0+output_mut_score)) + \
+                        np.log2((1.0+output_rev_score) / (1.0+output_mut_rev_score)))/2.0
+
+        # mean signals between two models
+        output_wt = (output_wt_1 + output_wt_2) / 2.0 
+        output_mut_seq = (output_mut_seq_1 + output_mut_seq_2) / 2.0
+        ca_qtl_score = (caqtl_score_1 + caqtl_score_2) / 2.0
+        
+        return output_wt,output_mut_seq, ca_qtl_score
+
 
     def contribution_input_grad_dist(self, model_inputs, gradient_mask):
                              
@@ -292,7 +338,7 @@ class genformer_model_nostrat:
             with tf.GradientTape() as input_grad_tape:
                 input_grad_tape.watch(seq)
                 input_grad_tape.watch(atac)
-                prediction,att_matrices,att_matrices_norm,out_performer,other_data = self.model.predict_on_batch(model_inputs)
+                prediction,att_matrices = self.model.predict_on_batch(model_inputs)
                 prediction = tf.cast(prediction,dtype=tf.float32)
                 gradient_mask = tf.cast(gradient_mask,dtype=tf.float32)
                 prediction_mask = tf.reduce_sum(gradient_mask * prediction) / gradient_mask_mass
@@ -436,6 +482,98 @@ def return_all_inputs(interval, atac_dataset, SEQUENCE_LENGTH,
     mask_centered = tf.slice(mask_centered, [0,crop_size,0],[-1,output_length-2*crop_size,-1])
     return dist_it,target_atac,masked_atac_reshape, mask, mask_centered
 
+def return_inputs_caqtl_score(interval, variant, atac_dataset, motif_activity,
+                              fasta_extractor,SEQUENCE_LENGTH=524288, num_bins=131072,
+                              resolution=4,crop_size=2,output_length=4096, 
+                              mask_indices_list='2043-2048'):
+
+    chrom,start,stop = resize_interval(interval,SEQUENCE_LENGTH)
+    atac_arr = return_bg_interval(atac_dataset,chrom,
+                                    start,stop,num_bins,resolution)
+    interval_resize = chrom,start,stop
+    
+    motif_activity=process_and_load_data(motif_activity)
+    motif_activity = tf.expand_dims(motif_activity,axis=0)
+    ## get two around
+    interval = kipoiseq.Interval(chrom, start, stop)
+    sequence_one_hot_orig = one_hot(fasta_extractor.extract(interval)).numpy()
+    
+    chrom,pos,alt = parse_var(variant)
+    sub_pos = int(pos) - int(start) - 1
+    sequence_one_hot_orig_mod = np.concatenate((sequence_one_hot_orig[:sub_pos,:],one_hot(alt),sequence_one_hot_orig[sub_pos+1:,:]),axis=0)
+    
+    sequence_one_hot_orig = tf.constant(sequence_one_hot_orig,dtype=tf.float32)
+
+    sequence_one_hot_orig_rev = tf.gather(sequence_one_hot_orig, [3, 2, 1, 0], axis=-1)
+    sequence_one_hot_orig_rev = tf.reverse(sequence_one_hot_orig_rev, axis=[0])
+    
+    sequence_one_hot_orig_mod = tf.constant(sequence_one_hot_orig_mod,dtype=tf.float32)
+    sequence_one_hot_orig_mod_rev = tf.gather(sequence_one_hot_orig_mod, [3, 2, 1, 0], axis=-1)
+    sequence_one_hot_orig_mod_rev = tf.reverse(sequence_one_hot_orig_mod_rev, axis=[0])
+
+    mask = np.zeros((1,SEQUENCE_LENGTH//128,1))
+    mask_centered = np.zeros((1,SEQUENCE_LENGTH//128,1))
+    atac_mask = np.ones((SEQUENCE_LENGTH//128,1))
+    for entry in mask_indices_list.split(','): 
+        mask_start = int(entry.split('-')[0])
+        mask_end = int(entry.split('-')[1])
+        
+        for k in range(SEQUENCE_LENGTH//128):
+            if k in range(mask_start,mask_end):
+                mask[0,k,0]=1
+        for k in range(SEQUENCE_LENGTH//128):
+            if k in range(mask_start+5,mask_end-3):
+                mask_centered[0,k,0]=1
+        for k in tf.range(mask_start,mask_end):
+            atac_mask[k,0] = 0.0
+            
+    atac_mask = tf.constant(atac_mask,dtype=tf.float32)
+    atac_mask = tf.reshape(tf.tile(atac_mask, [1,32]),[-1])
+    atac_mask = tf.expand_dims(atac_mask,axis=1)
+
+    masked_atac = atac_arr * atac_mask 
+    
+    diff = tf.math.sqrt(tf.nn.relu(masked_atac - 150.0 * tf.ones(masked_atac.shape)))
+    masked_atac = tf.clip_by_value(masked_atac, clip_value_min=0.0, clip_value_max=150.0) + diff
+
+    masked_atac_rev = tf.reverse(masked_atac,axis=[0])
+    
+    masked_atac_reshape = tf.reduce_sum(tf.reshape(masked_atac, [-1,32]),axis=1,keepdims=True)
+
+    masked_atac_reshape = tf.slice(masked_atac_reshape,
+                        [crop_size,0],
+                        [output_length-2*crop_size,-1])
+
+    target_atac = tf.reduce_sum(tf.reshape(atac_arr, [-1,32]),axis=1,keepdims=True)
+
+    diff = tf.math.sqrt(tf.nn.relu(target_atac - 2000.0 * tf.ones(target_atac.shape)))
+    target_atac = tf.clip_by_value(target_atac, clip_value_min=0.0, clip_value_max=2000.0) + diff
+
+    target_atac = tf.slice(target_atac,
+                        [crop_size,0],
+                        [output_length-2*crop_size,-1])
+    
+    mask = tf.slice(mask, [0,crop_size,0],[-1,output_length-2*crop_size,-1])
+    mask_centered = tf.slice(mask_centered, [0,crop_size,0],[-1,output_length-2*crop_size,-1])
+
+
+    inputs = ((tf.expand_dims(sequence_one_hot_orig,axis=0), \
+                tf.expand_dims(masked_atac,axis=0), \
+                    tf.expand_dims(motif_activity,axis=0)), \
+                (tf.expand_dims(sequence_one_hot_orig_rev,axis=0), \
+                                tf.expand_dims(masked_atac_rev,axis=0), \
+                                    tf.expand_dims(motif_activity,axis=0)))
+    
+
+    inputs_mut = (tf.expand_dims(sequence_one_hot_orig_mod,axis=0), \
+                    tf.expand_dims(masked_atac,axis=0), \
+                        tf.expand_dims(motif_activity,axis=0)), \
+                    (tf.expand_dims(sequence_one_hot_orig_mod_rev,axis=0), \
+                                        tf.expand_dims(masked_atac_rev,axis=0), \
+                                            tf.expand_dims(motif_activity,axis=0))
+    
+    return inputs, inputs_mut, masked_atac, motif_activity,target_atac, masked_atac_reshape[:,0], mask[0,:,0], mask_centered,interval_resize
+
 
 def plot_logo(matrix,y_min,y_max):
     
@@ -475,7 +613,6 @@ def write_bg(window,seq_length, crop,input_arr,output_res,out_file_name):
     out_file.close()
     
     
-
 def return_all_inputs_no_strategy(interval, atac_dataset, SEQUENCE_LENGTH,
                       num_bins, resolution, motif_activity,crop_size,output_length,
                       fasta_extractor,mask_indices_list):
@@ -486,7 +623,6 @@ def return_all_inputs_no_strategy(interval, atac_dataset, SEQUENCE_LENGTH,
     atac_arr = atac_arr + tf.math.abs(tf.random.normal(atac_arr.shape,mean=1.0e-04,stddev=1.0e-04,dtype=tf.float32))
     
     ## temporary
-    
     motif_activity=process_and_load_data(motif_activity)
     motif_activity = tf.expand_dims(motif_activity,axis=0)
 
@@ -494,24 +630,9 @@ def return_all_inputs_no_strategy(interval, atac_dataset, SEQUENCE_LENGTH,
     interval = kipoiseq.Interval(chrom, start-1, stop+1)
     
     sequence_one_hot_orig = tf.constant(one_hot(fasta_extractor.extract(interval)),dtype=tf.float32)
-    
-    sequence_one_hot_min1 = tf.slice(sequence_one_hot_orig,[0,0],[output_length*128,-1])
-    sequence_one_hot = tf.slice(sequence_one_hot_orig,[1,0],[output_length*128,-1])
-    sequence_one_hot_max1 = tf.slice(sequence_one_hot_orig,[2,0],[output_length*128,-1])
 
-    sequence_one_hot_min1_rev = tf.gather(sequence_one_hot_min1, [3, 2, 1, 0], axis=-1)
-    sequence_one_hot_min1_rev = tf.reverse(sequence_one_hot_min1_rev, axis=[0])
-    
-    sequence_one_hot_rev = tf.gather(sequence_one_hot, [3, 2, 1, 0], axis=-1)
-    sequence_one_hot_rev = tf.reverse(sequence_one_hot_rev, axis=[0])
-    
-    sequence_one_hot_max1_rev = tf.gather(sequence_one_hot_max1, [3, 2, 1, 0], axis=-1)
-    sequence_one_hot_max1_rev = tf.reverse(sequence_one_hot_max1_rev, axis=[0])
-    
-    sequences = sequence_one_hot_min1,sequence_one_hot, \
-                    sequence_one_hot_max1, sequence_one_hot_min1_rev, \
-                        sequence_one_hot_rev,sequence_one_hot_max1_rev  
-    
+    sequence_one_hot = tf.slice(sequence_one_hot_orig,[1,0],[output_length*128,-1])
+
     mask = np.zeros((1,SEQUENCE_LENGTH//128,1))
     mask_centered = np.zeros((1,SEQUENCE_LENGTH//128,1))
     atac_mask = np.ones((SEQUENCE_LENGTH//128,1))
@@ -563,9 +684,7 @@ def return_all_inputs_no_strategy(interval, atac_dataset, SEQUENCE_LENGTH,
     masks = mask, mask_rev
     masks_centered = mask_centered,mask_centered_rev
     
-    return sequences, masked_atacs, motif_activity,target_atac, masked_atac_reshape, masks, masks_centered
-
-
+    return sequence_one_hot, masked_atacs, motif_activity,target_atac, masked_atac_reshape, masks, masks_centered
 
 def return_grads(model1, model2): 
     
@@ -792,3 +911,136 @@ def return_distributed_iterators(gcs_path, global_batch_size,
     test_data_it = iter(test_dist)
 
     return test_data_it
+
+
+def parse_var(variant):
+    
+    chrom = variant[0].split(':')[0]
+    pos=int(variant[0].split(':')[1].split('-')[0].replace(',',''))
+    
+    return chrom,pos,variant[1]
+
+
+def parse_var_long(variant):
+    
+    chrom = variant[0].split(':')[0]
+    pos=int(variant[0].split(':')[1].split('-')[0].replace(',',''))
+    length = len(variant[1])
+    return chrom,pos,length,variant[1]
+
+def parse_gtf_collapsed(gtf_file, chromosome, start, end):
+    genes = {}
+    with open(gtf_file, 'r') as f:
+        for line in f:
+            if line.startswith("#"):
+                continue
+            columns = line.strip().split("\t")
+            if len(columns) < 9:
+                continue
+            feature_type = columns[2]
+            chrom = columns[0]
+            feature_start = int(columns[3])
+            feature_end = int(columns[4])
+            if chrom != chromosome or feature_end < start or feature_start > end:
+                continue
+
+            # Parse attributes in the 9th column
+            attributes = {}
+            for attr in columns[8].split(';'):
+                attr = attr.strip()
+                if attr:
+                    parts = attr.split(' ', 1)
+                    if len(parts) == 2:
+                        key, value = parts
+                        attributes[key.strip()] = value.strip('"')
+
+            gene_name = attributes.get("gene_name", "NA")
+
+            if feature_type == "exon":
+                if gene_name not in genes:
+                    genes[gene_name] = {
+                        "start": feature_start,
+                        "end": feature_end,
+                        "exons": [],
+                    }
+                # Extend the gene's range
+                genes[gene_name]["start"] = min(genes[gene_name]["start"], feature_start)
+                genes[gene_name]["end"] = max(genes[gene_name]["end"], feature_end)
+                # Add the exon
+                genes[gene_name]["exons"].append((feature_start, feature_end))
+
+    # Merge overlapping exons for each gene
+    for gene in genes.values():
+        gene["exons"] = merge_intervals(gene["exons"])
+
+    return genes
+
+
+def merge_intervals(intervals):
+    """Merge overlapping intervals."""
+    if not intervals:
+        return []
+    # Sort intervals by start position
+    intervals.sort(key=lambda x: x[0])
+    merged = [intervals[0]]
+    for current_start, current_end in intervals[1:]:
+        last_start, last_end = merged[-1]
+        if current_start <= last_end:
+            # Merge intervals
+            merged[-1] = (last_start, max(last_end, current_end))
+        else:
+            merged.append((current_start, current_end))
+    return merged
+
+
+def plot_collapsed_gene_track(ax, genes, start, end, chromosome):
+    y = 0  # Track height for stacking genes
+    for gene_name, gene_data in genes.items():
+        # Plot the entire gene range
+        ax.plot([gene_data["start"], gene_data["end"]], [y, y], color="black", linewidth=1)
+        # Plot each merged exon
+        for exon_start, exon_end in gene_data["exons"]:
+            ax.add_patch(plt.Rectangle(
+                (exon_start, y - 0.2), exon_end - exon_start, 0.4, color="blue", alpha=0.7
+            ))
+        # Add gene name with larger font size
+        ax.text((gene_data["start"] + gene_data["end"]) / 2, y + 0.4,
+                gene_name, fontsize=10, ha="center", va="bottom", color="black")
+        y -= 1  # Move to the next track
+
+    ax.set_xlim(start, end)
+    ax.set_ylim(y, 1)
+    ax.set_yticks([])  # Remove y-axis ticks and labels
+    ax.spines['top'].set_visible(False)  # Remove the top border
+    ax.spines['right'].set_visible(False)  # Remove the right border
+    ax.spines['left'].set_visible(False)  # Remove the left border
+    ax.spines['bottom'].set_visible(False)  # Remove the bottom border
+
+    
+def plot_tracks_with_genes(tracks, gtf_file, interval, y_lim, height=1.5):
+    chromosome,start,end=interval
+    # Parse the GTF file to extract collapsed genes
+    genes = parse_gtf_collapsed(gtf_file, chromosome, start, end)
+
+    # Create subplots
+    fig, axes = plt.subplots(len(tracks) + 1, 1, figsize=(24, height * (len(tracks) + 1)), sharex=True)
+
+    # Plot collapsed gene track
+    plot_collapsed_gene_track(axes[0], genes, start, end,chromosome)
+
+    # Plot other tracks
+    for ax, (title, y) in zip(axes[1:], tracks.items()):
+        ax.fill_between(np.linspace(start, end, num=len(y[0])), y[0], color=y[1])
+        ax.set_title(title)
+        ax.set_ylim((0, y_lim))
+
+    # Add chromosome label at the bottom of the whole figure
+    label = f"{chromosome}: {start} - {end}"
+    fig.text(0.5, -0.05, label, ha="center", va="center", fontsize=12, color="black")
+
+    plt.tight_layout()
+    plt.show()
+
+
+def get_caqtl_score(output,output_mut):
+    wt = tf.reduce_sum(output_mut[2044:2047]) - tf.reduce_sum(output[2044:2047])
