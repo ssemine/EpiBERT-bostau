@@ -1,8 +1,17 @@
-# EpiBERT repository
+## EpiBERT
+<img src="docs/graphical_abstract.png" width="400">
 
-**EpiBERT** learns representations of accessible sequence that generalize across cell types via "masked accessibility modeling" which can be used for downstream fine-tuning tasks, such as RAMPAGE-seq prediction in new cell types
+**EpiBERT** learns representations of accessible sequence that generalize across cell types via "masked accessibility modeling" which can be used for downstream fine-tuning tasks, such as caQTL predictions and RAMPAGE-seq prediction in new cell types. [Link to manuscript](https://www.cell.com/cell-genomics/fulltext/S2666-979X(25)00018-7)
 
-## dataset processing
+### Installation
+This repository depends on Python 3 and Tensorflow. See all requirements which you can see and install via requirements.txt for pip. For ease you can clone this repository and run set pip install -e .
+
+### Model Usage
+These notebooks are a work in progress. I will be adding notebooks for variant scoring w/ null distribution, motif generation, and RAMPAGE-seq/QTL prediction shortly. If there is a task in particular you would like please post it as an issue. 
+- [Data preprocessing for model usage](example_usage/data_processing.ipynb)
+- [caQTL scoring and plotting ](example_usage/caqTL_predict.ipynb)
+
+### dataset processing
 Scripts and code for dataset processing can be found in the data_processing directory.
  * alignment_and_peak_call : ATAC-seq alignment and peak calling
  * create_signal_tracks : 
@@ -16,7 +25,7 @@ Scripts and code for dataset processing can be found in the data_processing dire
  * write_TF_records : convert input ATAC and RAMPAGE profiles, and motif enrichments to tfrecords. Also contains all the train/validation/test sequence splits in sequence_splits subdirectory. 
 
 
-## dataset inputs
+### dataset inputs
 Training and evaluation data are available on google cloud at gs://epibert/data. You will need google cloud access with a valid billing account to access/read the data. Datasets are in tensorflow record format - functions for reading/deserializing/decoding this data are available in the scripts described in 'main_files' directory below. 
 
 Pre-training data
@@ -32,7 +41,7 @@ Pre-training data
 
 Processed finetuning data (paired ATAC/RAMPAGE datasets) is available at gs://epibert/data/rampage_fine_tuning
 
-## main files
+### main files
 For pre-training(masked atac prediction, _atac suffix files):
  * execute_pretraining.sh - training bash script where you can define dataset locations, weights and biases username and project id, and model hyperparameters
  * training_utils_atac_pretrain.py - define functions for train and validation steps, data loading and augmentation, masking, early stopping, model saving
@@ -43,7 +52,7 @@ For pre-training(masked atac prediction, _atac suffix files):
 
 Files for fine-tuning for RAMPAGE prediction follow a similar structure
 
-## model weights
+### model weights
  * Two pre-trained models are available at gs://epibert/models/pretrained. Both models are used for caQTL analyses. Only model1 was used for downstream fine-tuning.
 
  * The fine-tuned model for RAMPAGE-seq prediction is available at gs://epibert/models/fine_tuned
