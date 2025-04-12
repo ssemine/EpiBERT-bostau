@@ -3,7 +3,7 @@
 
 **EpiBERT** learns representations of accessible sequence that generalize across cell types via "masked accessibility modeling" which can be used for downstream fine-tuning tasks, such as caQTL predictions and RAMPAGE-seq prediction in new cell types. [Link to manuscript](https://www.cell.com/cell-genomics/fulltext/S2666-979X(25)00018-7)
 
-If you use EpiBERT or the code in this repository please cite Javed, N.*, Weingarten, T.*, Sehanobish, A., Roberts, A., Dubey, A., Choromanski, K., and Bernstein, B.E. (2025). A multi-modal transformer for cell type-agnostic regulatory predictions. Cell Genom. 5, 100762. DOI: 10.1016/j.xgen.2025.100762. 
+If you use EpiBERT or the code in this repository please cite Javed, N.<sup>\*</sup>, Weingarten, T.<sup>\*</sup>, Sehanobish, A., Roberts, A., Dubey, A., Choromanski, K., and Bernstein, B.E. (2025). A multi-modal transformer for cell type-agnostic regulatory predictions. Cell Genom. 5, 100762. DOI: 10.1016/j.xgen.2025.100762. 
 
 ### Installation
 This repository depends on Python 3 and Tensorflow. See all requirements which you can see and install via requirements.txt for pip. For ease you can clone this repository and run set pip install -e .
