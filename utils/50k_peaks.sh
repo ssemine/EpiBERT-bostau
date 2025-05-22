@@ -32,7 +32,6 @@ TRIM_GALORE="/home/s4693165/.local/bin/TrimGalore-0.6.10/trim_galore"
 mkdir -p "$OUTPUT_DIR"
 
 R1_FILES=($(find "$INPUT_DIR" -name "*_R1.fastq.gz" | sort))
-R2_FILES=($(find "$INPUT_DIR" -name "*_R2.fastq.gz" | sort))R1_FILES=($(find "$INPUT_DIR" -name "*_R1.fastq.gz" | sort))
 R2_FILES=($(find "$INPUT_DIR" -name "*_R2.fastq.gz" | sort))
 R1="${R1_FILES[$SLURM_ARRAY_TASK_ID]}"
 R2="${R2_FILES[$SLURM_ARRAY_TASK_ID]}"
