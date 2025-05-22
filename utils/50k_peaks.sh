@@ -20,6 +20,8 @@ mkdir -p logs
 
 
 source ../config.sh
+source activate atac
+
 GENOME_DIR="$SCRATCH_DIR/EpiBERT-bostau_data/refGenomes/bovine"
 ATAC_DIR="$SCRATCH_DIR/EpiBERT-bostau_data/bovineATAC/arrayExpress"
 REF_FA="$GENOME_DIR/bosTau9.fa"
