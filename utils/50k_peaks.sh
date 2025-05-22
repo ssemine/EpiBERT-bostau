@@ -1,6 +1,5 @@
 #!/bin/bash
 
-#SBATCH --account=
 #SBATCH --job-name=atac_paired
 #SBATCH --output=logs/atac_paired_%A_%a.out
 #SBATCH --error=logs/atac_paired_%A_%a.err
@@ -50,16 +49,16 @@ R2_TRIM="$OUTPUT_DIR/${sample}_R2_val_2.fq.gz"
 bowtie2 -x "$BOWTIE2_IDX" -1 "$R1_TRIM" -2 "$R2_TRIM" -S "$OUTPUT_DIR/$sample.sam" -p 8 \
     2> "$OUTPUT_DIR/$sample.bowtie2.log"
 
-# sam bam
+# sam bam fix this
 samtools view -@ 8 -bS "$OUTPUT_DIR/$sample.sam" | \
-    samtools sort -@ 8 -o "$OUTPUT_DIR/$sample.sorted.bam"
+samtools sort -@ 8 -o "$OUTPUT_DIR/$sample.sorted.bam"
 rm "$OUTPUT_DIR/$sample.sam"
 
-samtools fixmate -m "$OUTPUT_DIR/$sample.sorted.bam" "$OUTPUT_DIR/$sample.fixmate.bam"
-samtools sort -@ 8 -o "$OUTPUT_DIR/$sample.positionsort.bam" "$OUTPUT_DIR/$sample.fixmate.bam"
-samtools markdup -r "$OUTPUT_DIR/$sample.positionsort.bam" "$OUTPUT_DIR/$sample.dedup.bam"
+samtools markdup -r -@ 8 "$OUTPUT_DIR/$sample.sorted.bam" "$OUTPUT_DIR/$sample.dedup.bam"
+
 samtools index "$OUTPUT_DIR/$sample.dedup.bam"
-rm "$OUTPUT_DIR/$sample.fixmate.bam" "$OUTPUT_DIR/$sample.positionsort.bam" "$OUTPUT_DIR/$sample.sorted.bam"
+
+rm "$OUTPUT_DIR/$sample.sorted.bam"
 
 # peak call
 macs2 callpeak -t "$OUTPUT_DIR/$sample.dedup.bam" -f BAMPE -g "$GENOME_SIZE" -n "$sample" \
