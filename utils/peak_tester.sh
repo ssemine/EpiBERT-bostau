@@ -1,11 +1,19 @@
 #!/bin/bash
 
+#SBATCH --job-name=atac_tester
+#SBATCH --output=logs_tester/atac_paired_%A_%a.out
+#SBATCH --error=logs_tester/atac_paired_%A_%a.err
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=64G
+#SBATCH --time=01:00:00
+#SBATCH --partition=general
+
 module load bowtie2
 module load samtools
 module load macs2
 module load bedtools
 
-mkdir -p logs
+mkdir -p logs_tester
 
 source ../config.sh
 
@@ -15,14 +23,15 @@ REF_FA="$GENOME_DIR/bosTau9.fa"
 BOWTIE2_IDX="$GENOME_DIR/bosTau9"
 GENOME_SIZE="2.7e9"
 INPUT_DIR="$ATAC_DIR"
-OUTPUT_DIR="$ATAC_DIR/output"
+OUTPUT_DIR="$ATAC_DIR/test_output"
 
 TRIM_GALORE="/home/s4693165/.local/bin/TrimGalore-0.6.10/trim_galore"
 
 mkdir -p "$OUTPUT_DIR"
 
-R1=""
-R2=""
+# sourced from config.sh
+R1="$ATAC_DIR/$TESTER_R1"
+R2="$ATAC_DIR/$TESTER_R2"
 
 sample=$(basename "$R1" _R1.fastq.gz)
 
@@ -48,7 +57,7 @@ samtools markdup -r -@ 8 "$OUTPUT_DIR/$sample.sorted.bam" "$OUTPUT_DIR/$sample.d
 
 samtools index "$OUTPUT_DIR/$sample.dedup.bam"
 
-rm "$OUTPUT_DIR/$sample.sorted.bam"
+# rm "$OUTPUT_DIR/$sample.sorted.bam" 
 
 # peak call
 macs2 callpeak -t "$OUTPUT_DIR/$sample.dedup.bam" -f BAMPE -g "$GENOME_SIZE" -n "$sample" \
