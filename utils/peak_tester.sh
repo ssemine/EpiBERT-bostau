@@ -49,15 +49,16 @@ bowtie2 -x "$BOWTIE2_IDX" -1 "$R1_TRIM" -2 "$R2_TRIM" -S "$OUTPUT_DIR/$sample.sa
     2> "$OUTPUT_DIR/$sample.bowtie2.log"
 
 # sam bam fix this
-samtools view -@ 8 -bS "$OUTPUT_DIR/$sample.sam" | \
-samtools sort -@ 8 -o "$OUTPUT_DIR/$sample.sorted.bam"
-rm "$OUTPUT_DIR/$sample.sam"
+samtools view -@ 8 -bS "$OUTPUT_DIR/$sample.sam" > "$OUTPUT_DIR/$sample.bam"
+samtools sort -@ 8 -n "$OUTPUT_DIR/$sample.bam" -o "$OUTPUT_DIR/$sample.namesorted.bam"
+samtools fixmate -@ 8 -m "$OUTPUT_DIR/$sample.namesorted.bam" "$OUTPUT_DIR/$sample.fixmate.bam"
+samtools sort -@ 8 "$OUTPUT_DIR/$sample.fixmate.bam" -o "$OUTPUT_DIR/$sample.sorted.bam"
+samtools markdup -@ 8 -r "$OUTPUT_DIR/$sample.sorted.bam" "$OUTPUT_DIR/$sample.dedup.bam"
 
-samtools markdup -r -@ 8 "$OUTPUT_DIR/$sample.sorted.bam" "$OUTPUT_DIR/$sample.dedup.bam"
-
-samtools index "$OUTPUT_DIR/$sample.dedup.bam"
-
-# rm "$OUTPUT_DIR/$sample.sorted.bam" 
+#rm "$OUTPUT_DIR/$sample.bam" \
+#   "$OUTPUT_DIR/$sample.namesorted.bam" \
+#   "$OUTPUT_DIR/$sample.fixmate.bam" \
+#   "$OUTPUT_DIR/$sample.sorted.bam"
 
 # peak call
 macs2 callpeak -t "$OUTPUT_DIR/$sample.dedup.bam" -f BAMPE -g "$GENOME_SIZE" -n "$sample" \
