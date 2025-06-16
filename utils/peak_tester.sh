@@ -55,10 +55,12 @@ samtools fixmate -@ 8 -m "$OUTPUT_DIR/$sample.namesorted.bam" "$OUTPUT_DIR/$samp
 samtools sort -@ 8 "$OUTPUT_DIR/$sample.fixmate.bam" -o "$OUTPUT_DIR/$sample.sorted.bam"
 samtools markdup -@ 8 -r "$OUTPUT_DIR/$sample.sorted.bam" "$OUTPUT_DIR/$sample.dedup.bam"
 
-#rm "$OUTPUT_DIR/$sample.bam" \
-#   "$OUTPUT_DIR/$sample.namesorted.bam" \
-#   "$OUTPUT_DIR/$sample.fixmate.bam" \
-#   "$OUTPUT_DIR/$sample.sorted.bam"
+# cleaning up intermediate files
+rm "$OUTPUT_DIR/$sample.sam" \
+    "$OUTPUT_DIR/$sample.bam" \
+    "$OUTPUT_DIR/$sample.namesorted.bam" \
+    "$OUTPUT_DIR/$sample.fixmate.bam" \
+    "$OUTPUT_DIR/$sample.sorted.bam"
 
 # peak call
 macs2 callpeak -t "$OUTPUT_DIR/$sample.dedup.bam" -f BAMPE -g "$GENOME_SIZE" -n "$sample" \
@@ -74,5 +76,8 @@ zcat "$OUTPUT_DIR/${sample}_peaks.narrowPeak.gz" | \
 bedtools getfasta -fi "$REF_FA" -bed "$OUTPUT_DIR/$sample.top50000.centered.bed" \
     -fo "$OUTPUT_DIR/$sample.top50000.peaks.fasta"
 
-echo "Done $sample"
+# final cleanup
+rm "$R1_TRIM" "$R2_TRIM"
+rm "$OUTPUT_DIR/${sample}_R*fastq.gz_trimming_report.txt"
 
+echo "Done $sample"
