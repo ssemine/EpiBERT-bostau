@@ -3,7 +3,7 @@
 source ../config.sh
 cd "$DATA_PROCESSING_DIR"
 
-for bfile in "$FILTERED_BED_DIR"*.top50000.centered.filtered.bed; do
+for bfile in "$FILTERED_BED_DIR"/*.top50000.centered.filtered.bed; do
     sample=$(basename "$bfile" .top50000.centered.filtered.bed)
 
     echo "Processing sample: $sample"
