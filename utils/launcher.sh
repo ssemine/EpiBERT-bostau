@@ -15,6 +15,7 @@ for R1 in "$ARRAY_EXPRESS_DIR"/*_R1.fastq.gz; do
 
         sbatch --account="$ACCOUNT_STRING" \
                --job-name="local_tester_${count}" \
+               --export=TESTER_R1="$TESTER_R1",TESTER_R2="$TESTER_R2" \
                local_tester.sh
 
         ((count++))
