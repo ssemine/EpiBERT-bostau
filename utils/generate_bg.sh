@@ -3,8 +3,6 @@
 source ../config.sh
 cd "$DATA_PROCESSING_DIR"
 
-awk '$1 ~ /^chr([1-9]$|1[0-9]$|2[0-9]$|X$|Y$)/' union_peaks.bed > union_peaks.filtered.bed
-
 for bfile in "$OUTPUT_DIR/unfiltered/"*.top50000.centered.bed; do
     sample=$(basename "$bfile" .top50000.centered.bed)
 
