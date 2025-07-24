@@ -2,8 +2,8 @@
 
 #SBATCH --output=logs/%x_%j.out
 #SBATCH --error=logs/%x_%j.err
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=64G
+#SBATCH --cpus-per-task=64
+#SBATCH --mem=128G
 #SBATCH --time=01:00:00
 #SBATCH --partition=general
 #SBATCH --export=ALL
